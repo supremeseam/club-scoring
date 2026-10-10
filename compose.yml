@@ -1,0 +1,49 @@
+# Production stack (also the "production-like" local test):
+#   SITE_ADDRESS=localhost docker compose up --build
+# With S3 backups on the server:
+#   docker compose --profile backup up -d --build
+services:
+  app:
+    build: { context: ., dockerfile: deploy/Dockerfile.backend }
+    env_file: [.env]
+    environment:
+      DATA_DIR: /data
+    volumes:
+      - data:/data
+      - static:/static
+      - ./frontend/public/brand:/app/frontend/public/brand:ro   # club logo for the PDFs
+    restart: unless-stopped
+    # Never publish this port ("ports:"): the app trusts X-Forwarded-For from Caddy for login lockouts.
+    expose: ["8000"]
+    logging: {driver: json-file, options: {max-size: "10m", max-file: "5"}}   # keeps the auth audit log, bounded
+
+  caddy:
+    build: { context: ., dockerfile: deploy/Dockerfile.frontend }
+    env_file: [.env]
+    ports: ["80:80", "443:443"]
+    volumes:
+      - static:/static:ro
+      - ./frontend/public/brand:/srv/brand:ro   # club logo/burgee, kept out of git
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [app]
+    restart: unless-stopped
+
+  litestream:
+    profiles: [backup]
+    image: litestream/litestream:0.3
+    # Host networking so the instance-role credentials are reachable via IMDSv2 (hop limit 1).
+    network_mode: host
+    env_file: [.env]
+    command: replicate -config /etc/litestream.yml
+    volumes:
+      - data:/data
+      - ./deploy/litestream.yml:/etc/litestream.yml:ro
+    depends_on: [app]
+    restart: unless-stopped
+
+volumes:
+  data:
+  static:
+  caddy_data:
+  caddy_config:

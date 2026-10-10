@@ -1,0 +1,7 @@
+# Normalise line endings so shell scripts and Dockerfiles work on Linux servers.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.webp binary
+*.ico binary
+*.sqlite3 binary

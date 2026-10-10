@@ -1,0 +1,190 @@
+/* Global look. Colours come from the Mantine theme (src/theme.ts); change them there, not here. */
+
+:root {
+  --radius-lg: 18px;
+  --medal-gold: linear-gradient(135deg, #f8e08e 0%, #d4a02c 100%);
+  --medal-silver: linear-gradient(135deg, #f1f3f6 0%, #aab2bd 100%);
+  --medal-bronze: linear-gradient(135deg, #e8b88a 0%, #b5733a 100%);
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+}
+
+/* soft page backdrop */
+.page-bg {
+  min-height: 100vh;
+  background:
+    radial-gradient(1200px 400px at 85% -10%, color-mix(in srgb, var(--mantine-primary-color-7) 10%, transparent), transparent 70%),
+    var(--mantine-color-body);
+}
+
+/* ---- header ---- */
+.site-header {
+  background: var(--mantine-color-body);
+  border-bottom: 3px solid var(--mantine-primary-color-7);
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.06);
+}
+.site-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--mantine-primary-color-7);
+}
+.site-brand .name {
+  font-family: var(--mantine-font-family-headings);
+  font-weight: 700;
+  font-size: 1.25rem;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+:root[data-mantine-color-scheme="dark"] .site-brand { color: var(--mantine-color-white); }
+
+/* the burgee on a light tile so it reads on dark backgrounds too */
+.burgee {
+  display: block;
+  width: auto;
+}
+.burgee-tile {
+  background: #fff;
+  border-radius: 14px;
+  padding: 8px 10px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  display: inline-flex;
+}
+:root[data-mantine-color-scheme="dark"] .site-header .burgee { background: #fff; border-radius: 6px; padding: 2px 4px; }
+
+/* ---- hero ---- */
+.hero {
+  position: relative;
+  margin: calc(var(--mantine-spacing-md) * -1) calc(var(--mantine-spacing-md) * -1) var(--mantine-spacing-lg);
+  color: #fff;
+  background:
+    radial-gradient(900px 300px at 12% 0%, rgba(255, 255, 255, 0.16), transparent 60%),
+    linear-gradient(135deg, var(--mantine-primary-color-9) 0%, var(--mantine-primary-color-7) 55%, var(--mantine-primary-color-6) 100%);
+  overflow: hidden;
+}
+.hero-inner {
+  position: relative;
+  z-index: 1;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 44px var(--mantine-spacing-md) 96px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.hero-title { color: #fff; font-size: clamp(2rem, 5vw, 3.1rem); line-height: 1.05; letter-spacing: 0.005em; }
+.hero-sub { color: rgba(255, 255, 255, 0.82); margin-top: 6px; font-size: 1.05rem; }
+.hero-wave { position: absolute; left: 0; bottom: -1px; width: 100%; height: 70px; display: block; }
+.hero-wave path { fill: var(--mantine-color-body); }
+.hero-wave .back { opacity: 0.35; }
+
+/* ---- content ---- */
+.page { max-width: 1100px; margin: 0 auto; }
+.section-title {
+  font-family: var(--mantine-font-family-headings);
+  position: relative;
+  padding-bottom: 6px;
+}
+.section-title::after {
+  content: ""; position: absolute; left: 0; bottom: 0; width: 44px; height: 3px; border-radius: 3px;
+  background: var(--mantine-primary-color-7);
+}
+
+.series-card {
+  position: relative;
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--radius-lg);
+  background: var(--mantine-color-body);
+  padding: 16px 18px 16px 22px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  overflow: hidden;
+}
+.series-card::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px;
+  background: linear-gradient(180deg, var(--mantine-primary-color-7), var(--mantine-primary-color-4));
+}
+.series-card:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12); }
+.series-card .title { font-family: var(--mantine-font-family-headings); font-size: 1.2rem; font-weight: 600; }
+
+/* ---- tables ---- */
+.brand-table { border-radius: 14px; overflow: hidden; }
+.brand-table thead th {
+  background: var(--mantine-primary-color-7);
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-bottom: 0;
+  white-space: nowrap;
+}
+.brand-table thead th a { color: #fff; }
+.brand-table thead th .mantine-Text-root { color: rgba(255, 255, 255, 0.75); }
+.brand-table tbody tr { transition: background 0.1s; }
+.brand-table tbody td { vertical-align: middle; }
+
+/* medals for the top three */
+.medal {
+  display: inline-grid; place-items: center;
+  width: 1.7rem; height: 1.7rem; border-radius: 50%;
+  font-weight: 700; font-size: 0.85rem; color: #1a1a1a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+.medal-1 { background: var(--medal-gold); }
+.medal-2 { background: var(--medal-silver); }
+.medal-3 { background: var(--medal-bronze); color: #fff; }
+
+/* ---- podium ---- */
+.podium {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: end;
+  max-width: 760px;
+}
+.podium-step {
+  text-align: center;
+  padding: 14px 10px 12px;
+  border-radius: var(--radius-lg);
+  background: var(--mantine-color-body);
+  border: 1px solid var(--mantine-color-default-border);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.07);
+}
+.podium-step.p1 { padding-top: 22px; padding-bottom: 18px; border-top: 4px solid #d4a02c; order: 2; }
+.podium-step.p2 { border-top: 4px solid #aab2bd; order: 1; }
+.podium-step.p3 { border-top: 4px solid #b5733a; order: 3; }
+.podium-step .medal { width: 2.4rem; height: 2.4rem; font-size: 1.1rem; margin-bottom: 6px; }
+.podium-step .boat { font-family: var(--mantine-font-family-headings); font-weight: 600; font-size: 1.05rem; line-height: 1.2; }
+.podium-step .time { margin-top: 4px; }
+@media (max-width: 520px) {
+  /* phones: three compact rows instead of three tall cards */
+  .podium { grid-template-columns: 1fr; gap: 8px; }
+  .podium-step, .podium-step.p1, .podium-step.p2, .podium-step.p3 {
+    order: 0; display: grid; grid-template-columns: auto 1fr auto; align-items: center; column-gap: 12px;
+    text-align: left; padding: 10px 14px; border-top-width: 1px; border-left: 5px solid #d4a02c;
+  }
+  .podium-step.p1 { order: -1; }
+  .podium-step.p2 { border-left-color: #aab2bd; }
+  .podium-step.p3 { border-left-color: #b5733a; }
+  .podium-step .medal, .podium-step.p1 .medal { width: 1.9rem; height: 1.9rem; margin: 0; font-size: 0.95rem; }
+  .podium-step .time { margin: 0; }
+}
+
+/* ---- footer ---- */
+.site-footer {
+  margin-top: 48px; padding: 20px 0 8px;
+  border-top: 1px solid var(--mantine-color-default-border);
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  color: var(--mantine-color-dimmed); font-size: 0.85rem;
+}
+
+@media print {
+  .site-header, .site-footer, .hero-wave, .no-print { display: none !important; }
+}

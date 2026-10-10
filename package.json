@@ -1,0 +1,24 @@
+{
+  "name": "club-scoring",
+  "private": true,
+  "version": "0.1.0",
+  "description": "PHRF time-on-distance scoring for the yacht club",
+  "scripts": {
+    "postinstall": "node scripts/postinstall.mjs",
+    "setup": "node scripts/setup.mjs",
+    "setup:club": "python -m uv run --project backend python backend/manage.py setup_club",
+    "setup:py": "python -m uv sync --project backend",
+    "migrate": "python -m uv run --project backend python backend/manage.py migrate",
+    "seed": "npm run migrate && python -m uv run --project backend python backend/manage.py seed_demo",
+    "dev": "node scripts/ensure-env.mjs && concurrently -k -n api,web -c blue,green \"python -m uv run --project backend python backend/manage.py runserver 127.0.0.1:8000\" \"npm --prefix frontend run dev\"",
+    "gen:api": "python -m uv run --project backend python backend/manage.py export_openapi_schema --api api.api.api --output openapi.json && npm --prefix frontend run gen:api",
+    "test": "npm run test:py && npm run test:web",
+    "test:py": "python -m uv run --project backend python -m pytest backend -q",
+    "test:web": "npm --prefix frontend run typecheck && npm --prefix frontend run test",
+    "e2e": "npm --prefix frontend run e2e",
+    "createsuperuser": "python -m uv run --project backend python backend/manage.py createsuperuser"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

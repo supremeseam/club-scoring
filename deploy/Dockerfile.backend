@@ -1,0 +1,22 @@
+# Django + Ninja on gunicorn. Build context: repo root. Builds natively on arm64 (EC2 t4g).
+FROM python:3.13-slim
+
+ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 UV_LINK_MODE=copy UV_PROJECT_ENVIRONMENT=/opt/venv
+RUN pip install --no-cache-dir uv
+
+WORKDIR /app/backend
+COPY backend/pyproject.toml backend/uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
+ENV PATH="/opt/venv/bin:$PATH"
+
+COPY backend/ ./
+COPY deploy/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh \
+    && useradd --system --uid 10001 --home /nonexistent app \
+    && mkdir -p /data /static && chown app /data /static
+USER app
+
+ENV DATA_DIR=/data DJANGO_SETTINGS_MODULE=config.settings
+EXPOSE 8000
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--access-logfile", "-"]

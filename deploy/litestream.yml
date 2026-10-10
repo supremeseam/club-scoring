@@ -1,0 +1,10 @@
+# Continuous SQLite replication to S3. Credentials come from the EC2 instance role (no static keys).
+dbs:
+  - path: /data/db.sqlite3
+    replicas:
+      - type: s3
+        bucket: ${LITESTREAM_BUCKET}
+        path: db
+        region: ${LITESTREAM_REGION}
+        retention: 720h
+        snapshot-interval: 24h

@@ -1,0 +1,21 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --project backend
+      - run: uv run --project backend python -m pytest backend -q
+      - run: uvx pip-audit --project backend || uvx pip-audit -r <(uv export --project backend --no-hashes --no-dev)
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm --prefix frontend ci
+      - run: npm --prefix frontend run typecheck
+      - run: npm --prefix frontend run test
+      - run: npm --prefix frontend audit --omit=dev --audit-level=high

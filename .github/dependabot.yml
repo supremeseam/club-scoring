@@ -1,14 +1,33 @@
 version: 2
+
+# Keep dependency updates calm: small updates arrive together in one weekly PR per ecosystem, and major
+# version jumps (which usually need code changes, e.g. Mantine 7 -> 9) are done by hand on purpose.
+# Security updates are separate from these rules and are still opened automatically.
 updates:
   - package-ecosystem: uv
     directory: /backend
     schedule: { interval: weekly }
+    open-pull-requests-limit: 3
+    groups:
+      python-minor-and-patch: { update-types: [minor, patch] }
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
   - package-ecosystem: npm
     directory: /frontend
     schedule: { interval: weekly }
+    open-pull-requests-limit: 3
+    groups:
+      npm-minor-and-patch: { update-types: [minor, patch] }
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
   - package-ecosystem: docker
     directory: /deploy
     schedule: { interval: monthly }
+
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: monthly }

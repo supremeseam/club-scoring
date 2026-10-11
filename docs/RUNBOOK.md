@@ -9,7 +9,7 @@ Ownership: the AWS account, domain and GitHub repo belong to **the club** (club 
    Security group: inbound **80 and 443 only** (no port 22). Attach an Elastic IP.
 4. **Data Lifecycle Manager** policy: weekly EBS snapshots, retain 4.
 5. **AWS Budgets** alert at $12/month.
-6. DNS: A record `results.yourclub.org` → the Elastic IP (club's existing DNS, or Route 53).
+6. DNS: an **`A` record only** (IPv4) `results.yourclub.org` → the Elastic IP (club's existing DNS, or Route 53). Don't add an `AAAA` record: see `docs/AUTHENTICATION.md` (client IPs).
 
 ## First deploy
 1. Connect with **SSM Session Manager** (Systems Manager → Session Manager).

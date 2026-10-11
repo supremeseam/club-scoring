@@ -30,6 +30,10 @@ Scope: a public website where anyone can read results and a few trusted **race c
 ## How client IPs are worked out (important)
 Lockouts are per IP. In production Caddy is the only way in and **overwrites `X-Forwarded-For`** with the real client address; the app uses the **right-most** entry (`accounts/ip.py`). IPv6 addresses are grouped by /64. **Never publish the app container's port** and don't put another proxy or CDN in front without revisiting this, or lockouts can be spoofed. In development there is no proxy and the header is ignored (`BEHIND_PROXY`).
 
+**Use IPv4 only.** On a Linux server Docker preserves each visitor's real IPv4 address, but for IPv6 it can substitute its own gateway address, which would make every IPv6 visitor look like a single client to the lockout. The runbook creates an IPv4 address and an `A` record only: **don't add an `AAAA` (IPv6) record** or enable IPv6 on the instance unless you've verified the address the app logs (`docker compose logs app | grep AUTH`) is the visitor's.
+
+This was checked in a production-style run: with Caddy in front, a forged `X-Forwarded-For` made no difference to the recorded address, and the lockout engaged on the 10th failed attempt.
+
 ## Configuration
 | Setting | Default | Meaning |
 |---|---|---|

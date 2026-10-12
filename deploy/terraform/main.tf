@@ -227,7 +227,8 @@ resource "aws_iam_role_policy_attachment" "dlm" {
 }
 
 resource "aws_dlm_lifecycle_policy" "weekly" {
-  description        = "${var.name}: weekly disk snapshots"
+  # AWS only allows letters, digits, spaces, hyphens and underscores here (no colons).
+  description        = "${var.name} weekly disk snapshots"
   execution_role_arn = aws_iam_role.dlm.arn
   state              = "ENABLED"
 

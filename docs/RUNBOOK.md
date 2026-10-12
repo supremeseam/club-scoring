@@ -8,7 +8,7 @@ Everything on AWS is created by Terraform from `deploy/terraform/`; follow **`de
 1. `terraform apply` creates the server (Ubuntu 24.04 ARM `t4g.micro`, encrypted disk, IMDSv2 required, fixed IP), a private versioned S3 backup bucket, an access role limited to that bucket and Session Manager, a firewall allowing only ports 80 and 443 (IPv4, no SSH), weekly disk snapshots (4 kept) and an optional budget alert.
 2. Connect with **Session Manager** (the link Terraform prints), run `deploy/bootstrap.sh`, edit `/opt/scoring/.env` (Terraform prints the lines), then `bash deploy/deploy.sh`.
 3. Create the first admin: `docker compose exec app python manage.py setup_club --username <you>`.
-4. DNS when you have a domain: an **`A` record only** (IPv4) pointing at the Elastic IP. Don't add an `AAAA` record: see `docs/AUTHENTICATION.md` (client IPs). Until then the site works on the server's Amazon hostname.
+4. DNS when you have a domain: an **`A` record only** (IPv4) pointing at the Elastic IP. Don't add an `AAAA` record: see `docs/AUTHENTICATION.md` (client IPs). Until then use the free `<ip>.sslip.io` name Terraform prints (Let's Encrypt won't issue certificates for Amazon's own hostnames).
 
 If you'd rather not use Terraform, create the same pieces by hand: S3 bucket (versioning on, public access blocked); an instance role with `AmazonSSMManagedInstanceCore` plus read/write on that bucket only; the EC2 instance as above; a Data Lifecycle Manager weekly-snapshot policy; an AWS Budgets alert.
 

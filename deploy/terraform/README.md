@@ -24,7 +24,7 @@ sudo nano /opt/scoring/.env     # paste the lines from `env_settings`, then set 
 cd /opt/scoring && sudo bash deploy/deploy.sh
 sudo docker compose exec app python manage.py setup_club --username <you>
 ```
-`bootstrap.sh` installs Docker, automatic security updates, swap and a nightly session cleanup, and writes `.env` with a random `SECRET_KEY`. Caddy then gets a real HTTPS certificate for `public_hostname`. Open `https://<public_hostname>` to check.
+`bootstrap.sh` installs Docker, automatic security updates, swap and a nightly session cleanup, and writes `.env` with a random `SECRET_KEY`. Caddy then gets a real HTTPS certificate for `public_hostname`, which is a free `<ip>.sslip.io` name pointing at the server's fixed IP (Let's Encrypt refuses certificates for Amazon's own `*.amazonaws.com` hostnames). Open `https://<public_hostname>` to check.
 
 ## Moving your existing data and logos up
 On your computer, from the project folder (the bucket name comes from `terraform output backup_bucket`):

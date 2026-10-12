@@ -1,7 +1,8 @@
 locals {
   ip = aws_eip.server.public_ip
-  # AWS's own name for the Elastic IP; Caddy can get a real HTTPS certificate for it until you have a domain.
-  hostname = var.region == "us-east-1" ? "ec2-${replace(local.ip, ".", "-")}.compute-1.amazonaws.com" : "ec2-${replace(local.ip, ".", "-")}.${var.region}.compute.amazonaws.com"
+  # Let's Encrypt refuses certificates for Amazon's own names (*.amazonaws.com), so until you have a domain use
+  # sslip.io, a free service that turns an IP into a name (34.215.78.72 -> 34-215-78-72.sslip.io).
+  hostname = "${replace(local.ip, ".", "-")}.sslip.io"
 }
 
 output "instance_id" {
@@ -13,7 +14,7 @@ output "public_ip" {
 }
 
 output "public_hostname" {
-  description = "Use as SITE_ADDRESS until you have your own domain."
+  description = "Use as SITE_ADDRESS until you have your own domain (a free <ip>.sslip.io name; Amazon hostnames cannot get certificates)."
   value       = local.hostname
 }
 

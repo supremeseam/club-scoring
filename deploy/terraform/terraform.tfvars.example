@@ -1,0 +1,15 @@
+# Copy this file to terraform.tfvars (which git ignores) and edit. Every line is optional.
+
+region = "us-west-2"
+name   = "club-scoring"
+
+# Where cost alerts go. The budget covers the WHOLE AWS account, not only this project.
+budget_email       = "treasurer@example.org"
+monthly_budget_usd = 12
+
+# instance_type         = "t4g.micro"
+# root_volume_gb        = 10
+# snapshots_to_keep     = 4
+# backup_retention_days = 30
+# vpc_id                = ""   # empty = the account's default VPC
+# subnet_id             = ""   # empty = the first subnet in that VPC

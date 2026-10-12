@@ -2,21 +2,15 @@
 
 Ownership: the AWS account, domain and GitHub repo belong to **the club** (club email and billing, with the maintainers invited as admins). At least one other member has admin access to AWS and the app.
 
-## Provision AWS (one time)
-1. **S3 bucket** for Litestream backups: versioning on, block all public access.
-2. **IAM role** for the instance: `AmazonSSMManagedInstanceCore` plus an inline policy allowing `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject`, `s3:ListBucket` on that bucket only.
-3. **EC2**: Ubuntu 24.04 LTS arm64, `t4g.micro`, encrypted 10 GB gp3 root volume, the role above, **IMDSv2 required**, hop limit 1.
-   Security group: inbound **80 and 443 only** (no port 22). Attach an Elastic IP.
-4. **Data Lifecycle Manager** policy: weekly EBS snapshots, retain 4.
-5. **AWS Budgets** alert at $12/month.
-6. DNS: an **`A` record only** (IPv4) `results.yourclub.org` → the Elastic IP (club's existing DNS, or Route 53). Don't add an `AAAA` record: see `docs/AUTHENTICATION.md` (client IPs).
+## Provision AWS and first deploy
+Everything on AWS is created by Terraform from `deploy/terraform/`; follow **`deploy/terraform/README.md`**. In short:
 
-## First deploy
-1. Connect with **SSM Session Manager** (Systems Manager → Session Manager).
-2. `sudo bash deploy/bootstrap.sh https://github.com/<club>/<repo>.git` (installs Docker, unattended-upgrades, 1 GB swap, a nightly `clearsessions` job, and writes `/opt/scoring/.env` mode 600 with `DEBUG=0` and a random `SECRET_KEY`).
-3. Edit `/opt/scoring/.env`: `SITE_ADDRESS`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS=https://results.yourclub.org`, `PUBLIC_URL`, `CLUB_NAME`, `TIME_ZONE`, `ADMIN_URL`, `LITESTREAM_BUCKET`, `LITESTREAM_REGION`.
-4. `cd /opt/scoring && bash deploy/deploy.sh`. Caddy obtains the Let's Encrypt certificate automatically.
-5. Create the first admin: `docker compose exec app python manage.py createsuperuser`.
+1. `terraform apply` creates the server (Ubuntu 24.04 ARM `t4g.micro`, encrypted disk, IMDSv2 required, fixed IP), a private versioned S3 backup bucket, an access role limited to that bucket and Session Manager, a firewall allowing only ports 80 and 443 (IPv4, no SSH), weekly disk snapshots (4 kept) and an optional budget alert.
+2. Connect with **Session Manager** (the link Terraform prints), run `deploy/bootstrap.sh`, edit `/opt/scoring/.env` (Terraform prints the lines), then `bash deploy/deploy.sh`.
+3. Create the first admin: `docker compose exec app python manage.py setup_club --username <you>`.
+4. DNS when you have a domain: an **`A` record only** (IPv4) pointing at the Elastic IP. Don't add an `AAAA` record: see `docs/AUTHENTICATION.md` (client IPs). Until then the site works on the server's Amazon hostname.
+
+If you'd rather not use Terraform, create the same pieces by hand: S3 bucket (versioning on, public access blocked); an instance role with `AmazonSSMManagedInstanceCore` plus read/write on that bucket only; the EC2 instance as above; a Data Lifecycle Manager weekly-snapshot policy; an AWS Budgets alert.
 
 ## Routine deploy
 `cd /opt/scoring && bash deploy/deploy.sh` (git pull, build both images, restart; migrations run on container start).

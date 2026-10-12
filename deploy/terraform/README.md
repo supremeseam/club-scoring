@@ -36,9 +36,9 @@ aws s3 cp frontend/public/brand/ s3://<bucket>/transfer/brand/ --recursive --exc
 On the server:
 ```
 sudo snap install aws-cli --classic
-cd /opt/scoring && sudo docker compose stop app
+cd /opt/scoring && sudo docker compose stop app litestream
 sudo mkdir -p /tmp/transfer && sudo aws s3 cp s3://<bucket>/transfer/ /tmp/transfer/ --recursive
-sudo docker run --rm -v scoring_data:/data -v /tmp/transfer:/src:ro alpine sh -c "cp /src/db.sqlite3 /data/db.sqlite3 && chown 10001 /data/db.sqlite3"
+sudo docker run --rm -v scoring_data:/data -v /tmp/transfer:/src:ro alpine sh -c "rm -f /data/db.sqlite3* && cp /src/db.sqlite3 /data/db.sqlite3 && chown 10001 /data/db.sqlite3"
 sudo mkdir -p frontend/public/brand && sudo cp /tmp/transfer/brand/* frontend/public/brand/
 sudo docker compose --profile backup up -d
 sudo aws s3 rm s3://<bucket>/transfer/ --recursive && sudo rm -rf /tmp/transfer

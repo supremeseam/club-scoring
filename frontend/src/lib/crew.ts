@@ -1,7 +1,7 @@
 /** Shapes returned by /api/crew/* (those endpoints return plain JSON, so the types live here). */
 export type Posting = {
   id: number; race_id: number | null; race: string; race_date?: string | null;
-  role: string; spots: number; experience: string; notes: string; interested?: number; is_open?: boolean;
+  role: string; spots: number; experience: string; notes: string; interested?: number; is_open?: boolean; filled?: number;
 };
 export type BoardBoat = { boat_id: number; name: string; sail_number: string; design: string; fleet: string; notes: string; postings: Posting[] };
 export type BoardRace = { race_id: number; label: string; date: string; volunteers: number };

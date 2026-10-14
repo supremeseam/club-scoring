@@ -70,7 +70,7 @@ function PostingEditor({ boat, races }: { boat: BoatRow; races: SkipperOverview[
         <Group key={p.id} justify="space-between" wrap="nowrap">
           <div>
             <Group gap="xs">
-              <Text fw={600} size="sm">{p.role || "Crew"} x{p.spots}</Text>
+              <Text fw={600} size="sm">{p.role || "Crew"}: {p.filled ?? 0} of {p.spots} filled</Text>
               <Badge variant="light">{p.race || "Any race"}</Badge>
               <Badge color={p.is_open ? "green" : "gray"}>{p.is_open ? "open" : "closed"}</Badge>
             </Group>

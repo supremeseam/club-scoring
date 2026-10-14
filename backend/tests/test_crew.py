@@ -317,3 +317,14 @@ def test_only_boats_with_a_skipper_login_can_be_signed_up_to(world):
     assert {b["name"] for b in opts["boats"]} == {"Alba", "Brisa"}
     assert "Unregistered" in {b["name"] for b in opts["all_boats"]}               # still pickable by a new skipper
     assert signup(client(), boat_id=lone.id).status_code == 404
+
+
+def test_spots_left_updates_for_boat_level_signups_too(world):
+    sam = sign_in("sam")
+    p = call(sam, "post", f"/api/crew/skipper/boats/{world['mine'].id}/postings", {"role": "Bow", "spots": 2}).json()
+    su = CrewSignup.objects.create(boat=world["mine"], name="N", email="n@example.org")   # no opening chosen
+    call(sam, "post", f"/api/crew/skipper/signups/{su.id}/respond", {"status": "accepted"})
+    assert client().get("/api/crew/board").json()["boats"][0]["postings"][0]["spots"] == 1
+    mine = call(sam, "get", "/api/crew/skipper/overview").json()["boats"][0]["postings"][0]
+    assert (mine["spots"], mine["filled"]) == (2, 1)
+    assert p["filled"] == 0

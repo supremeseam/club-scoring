@@ -177,6 +177,18 @@ class ApproveIn(Schema):
     boat_ids: list[int] = Field(min_length=1, max_length=20)
 
 
+def _filled(postings) -> dict[int, int]:
+    """Accepted sailors per posting. A sign-up counts against its own opening; one made for the boat (and race)
+    without picking an opening counts against the opening for that same boat and race."""
+    postings = list(postings)
+    accepted = CrewSignup.objects.filter(status="accepted", boat_id__in={p.boat_id for p in postings})
+    out = {}
+    for p in postings:
+        out[p.id] = sum(1 for s in accepted if s.posting_id == p.id or
+                        (s.posting_id is None and s.boat_id == p.boat_id and s.race_id == p.race_id))
+    return out
+
+
 # ---- public: browse -----------------------------------------------------------------------------------------
 @public_router.get("/board")
 def board(request):
@@ -185,19 +197,20 @@ def board(request):
                 .select_related("boat", "boat__default_fleet", "race", "race__series")
                 .filter(Q(race__isnull=True) | Q(race__status=Race.Status.SCHEDULED))
                 .exclude(race__series__status=Series.Status.DRAFT)
-                .annotate(interested=Count("signups", filter=Q(signups__status="pending")),
-                          filled=Count("signups", filter=Q(signups__status="accepted"))))
+                .annotate(interested=Count("signups", filter=Q(signups__status="pending"))))
+    postings = list(postings)
+    filled = _filled(postings)
     notes = {i.boat_id: i.notes for i in BoatCrewInfo.objects.all()}
     boats: dict[int, dict] = {}
     for p in postings:
-        if p.filled >= p.spots:                           # every spot is taken: nothing left to offer publicly
+        if filled[p.id] >= p.spots:                           # every spot is taken: nothing left to offer publicly
             continue
         b = boats.setdefault(p.boat_id, {
             "boat_id": p.boat_id, "name": p.boat.name, "sail_number": p.boat.sail_number, "design": p.boat.design,
             "fleet": p.boat.default_fleet.name if p.boat.default_fleet else "",
             "notes": notes.get(p.boat_id, ""), "postings": []})
         b["postings"].append({"id": p.id, "race_id": p.race_id, "race": _race_label(p.race) if p.race else "",
-                              "race_date": p.race.date if p.race else None, "role": p.role, "spots": p.spots - p.filled,
+                              "race_date": p.race.date if p.race else None, "role": p.role, "spots": p.spots - filled[p.id],
                               "experience": p.experience, "notes": p.notes, "interested": p.interested})
     volunteers = {r["race_id"]: r["n"] for r in CrewSignup.objects.filter(
         boat__isnull=True, status__in=["pending", "accepted"]).values("race_id").annotate(n=Count("id"))}
@@ -355,8 +368,9 @@ def _info_out(boat: Boat) -> dict:
             "contact_preference": i.contact_preference if i else "app"}
 
 
-def _posting_out(p: CrewPosting) -> dict:
-    return {"id": p.id, "race_id": p.race_id, "race": _race_label(p.race) if p.race else "",
+def _posting_out(p: CrewPosting, filled: int | None = None) -> dict:
+    filled = _filled([p])[p.id] if filled is None else filled
+    return {"filled": filled, "id": p.id, "race_id": p.race_id, "race": _race_label(p.race) if p.race else "",
             "role": p.role, "spots": p.spots, "experience": p.experience, "notes": p.notes, "is_open": p.is_open}
 
 

@@ -9,6 +9,11 @@ class AccountProfile(models.Model):
     # choose their own password before they can do anything else.
     must_change_password = models.BooleanField(default=False)
     password_changed_at = models.DateTimeField(null=True, blank=True)
+    # What this login may do. Everyone created in the Django admin is race committee (the default). Skipper and
+    # crew accounts can NEVER reach /api/manage/*: RoleAuth refuses anyone whose role is not "rc".
+    role = models.CharField(max_length=8, default="rc", choices=[
+        ("rc", "Race committee"), ("skipper", "Skipper (own boat's crew info only)"),
+        ("crew", "Crew (own sign-ups only)")])
 
     def __str__(self):
         return f"{self.user} (must change: {self.must_change_password})"
@@ -17,3 +22,8 @@ class AccountProfile(models.Model):
 def must_change_password(user) -> bool:
     profile = getattr(user, "auth_profile", None)      # a missing profile just means "no"
     return bool(profile and profile.must_change_password)
+
+
+def account_role(user) -> str:
+    profile = getattr(user, "auth_profile", None)
+    return profile.role if profile else "rc"

@@ -75,6 +75,7 @@ INSTALLED_APPS = [
     "racing",
     "api",
     "accounts",
+    "crew",
 ]
 
 MIDDLEWARE = [

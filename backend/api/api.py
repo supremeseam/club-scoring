@@ -19,7 +19,7 @@ from ninja.errors import HttpError
 from ninja.security import SessionAuth
 
 from accounts.audit import log_event
-from accounts.models import AccountProfile, must_change_password
+from accounts.models import AccountProfile, account_role, must_change_password
 from accounts.security import account_locked
 from boats.models import Boat
 from racing.models import Race, Series
@@ -30,15 +30,17 @@ from results.pdf import podium_pdf, standings_pdf
 from . import schemas as s
 
 
-class EditorAuth(SessionAuth):
-    """Any logged-in account is an editor (accounts are created by an admin only).
+class RoleAuth(SessionAuth):
+    """A signed-in account with one of the allowed roles. CSRF is enforced on unsafe methods by SessionAuth.
 
-    CSRF is enforced on unsafe methods by SessionAuth(csrf=True). A user who must change a temporary password
-    is rejected with 403 "password_change_required" everywhere except the few routes that let them do so.
+    Three kinds of login stay apart: race committee ("rc", made by an admin) may use /api/manage/*; skipper and
+    crew accounts can only reach their own small corner of /api/crew/*. A user who must change a temporary
+    password is rejected with 403 "password_change_required" everywhere except the few routes that let them.
     """
 
-    def __init__(self, allow_must_change: bool = False):
+    def __init__(self, roles: tuple[str, ...], allow_must_change: bool = False):
         super().__init__()
+        self.roles = roles
         self.allow_must_change = allow_must_change
 
     def authenticate(self, request, key):
@@ -47,13 +49,17 @@ class EditorAuth(SessionAuth):
             return None
         if settings.REQUIRE_2FA and not user.is_verified():
             return None
+        if account_role(user) not in self.roles:
+            raise HttpError(403, "This account cannot do that")
         if not self.allow_must_change and must_change_password(user):
             raise HttpError(403, "password_change_required")
         return user
 
 
-editor_auth = EditorAuth()
-account_auth = EditorAuth(allow_must_change=True)       # /auth/me, /auth/change-password, /auth/logout
+editor_auth = RoleAuth(("rc",))                       # race committee
+skipper_auth = RoleAuth(("skipper",))
+crew_auth = RoleAuth(("crew",))
+account_auth = RoleAuth(("rc", "skipper", "crew"), allow_must_change=True)    # /auth/me, change-password, logout
 api = NinjaAPI(title="Club Scoring API", version="1.0", auth=None, docs_url="/docs")
 
 
@@ -72,8 +78,11 @@ def _check_csrf(request):
 
 
 def _me(user) -> dict:
-    return {"username": user.get_username(), "is_admin": user.is_superuser,
-            "must_change_password": must_change_password(user)}
+    from crew.api import unseen_requests
+    role = account_role(user)
+    return {"username": user.get_username(), "is_admin": user.is_superuser and role == "rc", "role": role,
+            "must_change_password": must_change_password(user),
+            "unseen_requests": unseen_requests(user) if role == "skipper" else 0}
 
 
 @api.get("/config", tags=["public"])
@@ -264,3 +273,11 @@ def standings_pdf_view(request, series_id: int):
 from .manage import router as manage_router  # noqa: E402
 
 api.add_router("/manage", manage_router, auth=editor_auth, tags=["manage"])
+
+from crew.api import crew_router, skipper_router  # noqa: E402
+from crew.api import manage_router as crew_manage_router, public_router as crew_public_router  # noqa: E402
+
+api.add_router("/crew", crew_public_router, auth=None, tags=["crew"])
+api.add_router("/crew", skipper_router, auth=skipper_auth, tags=["crew-skipper"])
+api.add_router("/crew", crew_router, auth=crew_auth, tags=["crew-account"])
+api.add_router("/manage", crew_manage_router, auth=editor_auth, tags=["manage"])

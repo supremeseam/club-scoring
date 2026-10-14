@@ -1,14 +1,19 @@
-import { Anchor, AppShell, Button, Group, Menu, Text } from "@mantine/core";
+import { Anchor, AppShell, Badge, Button, Group, Menu, Text } from "@mantine/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { api } from "./api/client";
 import { RequireEditor, RequireSignedIn, useAuth } from "./auth";
 import { Burgee, SiteFooter, useSite } from "./components/Brand";
 import Boats from "./pages/manage/Boats";
+import CrewAdmin from "./pages/manage/CrewAdmin";
 import Courses from "./pages/manage/Courses";
 import Fleets from "./pages/manage/Fleets";
 import SeriesManage from "./pages/manage/SeriesManage";
+import MySignups from "./pages/crew/MySignups";
+import SkipperHome from "./pages/crew/SkipperHome";
 import BoatPage from "./pages/public/BoatPage";
+import CrewBoard from "./pages/public/CrewBoard";
+import CrewJoin from "./pages/public/CrewJoin";
 import ChangePassword from "./pages/public/ChangePassword";
 import Login from "./pages/public/Login";
 import RacePage from "./pages/public/RacePage";
@@ -23,7 +28,10 @@ const LINKS: [string, string][] = [
   ["/manage/boats", "Boats & ratings"],
   ["/manage/fleets", "Fleets & rating types"],
   ["/manage/courses", "Marks & courses"],
+  ["/manage/crew", "Crew board"],
 ];
+const SKIPPER_LINKS: [string, string][] = [["/skipper", "My boat's crew"]];
+const CREW_LINKS: [string, string][] = [["/crew/my", "My sign-ups"]];
 
 export default function App() {
   const { user } = useAuth();
@@ -31,6 +39,7 @@ export default function App() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const { pathname } = useLocation();
+  const links = user?.role === "skipper" ? SKIPPER_LINKS : user?.role === "crew" ? CREW_LINKS : LINKS;
   const logout = async () => {
     await api("/auth/logout", { method: "POST" });
     await qc.invalidateQueries({ queryKey: ["me"] });
@@ -45,9 +54,10 @@ export default function App() {
               <Burgee height={36} />
               <span className="name">{site?.app_name ?? "Race Results"}</span>
             </Link>
+            <Anchor component={Link} to="/crew" size="sm" fw={pathname === "/crew" ? 700 : 500} underline="hover">Crew board</Anchor>
             {user && !user.must_change_password && (
               <Group gap="md" visibleFrom="md" wrap="nowrap">
-                {LINKS.map(([to, label]) => (
+                {links.map(([to, label]) => (
                   <Anchor key={to} component={Link} to={to} size="sm" fw={pathname.startsWith(to) ? 700 : 500}
                     underline={pathname.startsWith(to) ? "always" : "hover"}>
                     {label}
@@ -64,7 +74,7 @@ export default function App() {
                     <Button size="compact-sm" variant="light" hiddenFrom="md">Menu</Button>
                   </Menu.Target>
                   <Menu.Dropdown>
-                    {LINKS.map(([to, label]) => (
+                    {links.map(([to, label]) => (
                       <Menu.Item key={to} component={Link} to={to}>{label}</Menu.Item>
                     ))}
                     <Menu.Divider />
@@ -72,11 +82,14 @@ export default function App() {
                   </Menu.Dropdown>
                 </Menu>
                 <Text size="sm" visibleFrom="sm" c="dimmed">{user.username}</Text>
+                {user.role === "skipper" && user.unseen_requests > 0 && (
+                  <Badge color="red" variant="filled" component={Link} to="/skipper" title="New crew requests">{user.unseen_requests}</Badge>
+                )}
                 <Button component={Link} to="/change-password" size="compact-sm" variant="subtle" visibleFrom="sm">Change password</Button>
                 <Button size="compact-sm" variant="default" onClick={logout}>Log out</Button>
               </>
             ) : (
-              <Button component={Link} to="/login" size="compact-sm" variant="light">RC login</Button>
+              <Button component={Link} to="/login" size="compact-sm" variant="light">Sign in</Button>
             )}
           </Group>
         </Group>
@@ -96,6 +109,11 @@ export default function App() {
             <Route path="/manage/fleets" element={<RequireEditor><Fleets /></RequireEditor>} />
             <Route path="/manage/courses" element={<RequireEditor><Courses /></RequireEditor>} />
             <Route path="/manage/series" element={<RequireEditor><SeriesManage /></RequireEditor>} />
+            <Route path="/crew" element={<CrewBoard />} />
+            <Route path="/crew/join" element={<CrewJoin />} />
+            <Route path="/crew/my" element={<RequireEditor role="crew"><MySignups /></RequireEditor>} />
+            <Route path="/skipper" element={<RequireEditor role="skipper"><SkipperHome /></RequireEditor>} />
+            <Route path="/manage/crew" element={<RequireEditor><CrewAdmin /></RequireEditor>} />
             <Route path="*" element={<Text>Page not found.</Text>} />
           </Routes>
         </div>

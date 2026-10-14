@@ -152,6 +152,8 @@ class Me(Schema):
     username: str
     is_admin: bool
     must_change_password: bool = False
+    role: str = "rc"
+    unseen_requests: int = 0
 
 
 # ---- editor ---------------------------------------------------------------------

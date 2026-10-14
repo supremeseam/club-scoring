@@ -20,6 +20,9 @@ If you'd rather not use Terraform, create the same pieces by hand: S3 bucket (ve
 2. Set a **temporary** password (15+ characters; the same rules apply as for everyone). Make one with `python -c "import secrets;print(secrets.token_urlsafe(16))"` and send it privately.
 3. At their first login they are required to choose their own password before they can do anything else.
 
+## Skipper and crew logins
+The race committee approves skipper logins in the app (*Crew board*); see `docs/CREW.md`. Reset or disable one in the site admin like any account. After upgrading, run the migrations (`deploy.sh` does) so existing accounts keep the race-committee role.
+
 ## Forgotten password
 Admin → Users → the person → *this form* link next to Password → set a new temporary password. They are signed out everywhere and must choose a new one at next login. From a shell: `docker compose exec app python manage.py changepassword <user>` then `... force_password_change <user>`.
 

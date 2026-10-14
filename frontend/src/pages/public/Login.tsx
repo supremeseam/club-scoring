@@ -1,8 +1,8 @@
 import { Alert, Button, Card, Center, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
 import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { api, type S } from "../../api/client";
-import { useAuth } from "../../auth";
+import { HOME, useAuth } from "../../auth";
 import { Burgee, useSite } from "../../components/Brand";
 
 export default function Login() {
@@ -25,7 +25,7 @@ export default function Login() {
       clearExpired();
       await refresh();
       // a temporary password must be replaced before anything else
-      nav(me.must_change_password ? "/change-password" : ((loc.state as { from?: string } | null)?.from ?? "/rc"));
+      nav(me.must_change_password ? "/change-password" : ((loc.state as { from?: string } | null)?.from ?? HOME[me.role] ?? "/"));
     } catch (ex) {
       setErr(ex instanceof Error ? ex.message : "Login failed");
     } finally {
@@ -39,7 +39,7 @@ export default function Login() {
           <Stack>
             <Stack align="center" gap={4}>
               <Burgee height={56} />
-              <Title order={3}>Race committee login</Title>
+              <Title order={3}>Sign in</Title>
               <Text size="sm" c="dimmed">{cfg?.app_name}</Text>
             </Stack>
             {expired && !err && <Alert color="blue">Your session ended. Please sign in again.</Alert>}
@@ -51,7 +51,8 @@ export default function Login() {
                 autoComplete="one-time-code" value={otp} onChange={(e) => setO(e.currentTarget.value)} />
             )}
             <Button type="submit" loading={busy} fullWidth size="md">Log in</Button>
-            <Text size="xs" c="dimmed" ta="center">Forgot your password? Ask a site administrator to reset it.</Text>
+            <Text size="xs" c="dimmed" ta="center">Forgot your password? Ask the race committee or a site administrator to reset it.</Text>
+            <Text size="xs" ta="center">Skipper or crew? <Link to="/crew/join">Request a login</Link></Text>
           </Stack>
         </form>
       </Card>

@@ -18,7 +18,7 @@ class AccountSecurityMiddleware:
        was used. (The idle limit is Django's SESSION_COOKIE_AGE with SESSION_SAVE_EVERY_REQUEST.) A session
        without a start marker is treated as expired.
     2. Keeps a user who must change their password out of the Django admin, except the pages needed to do so.
-       (The API enforces the same rule in EditorAuth.)
+       (The API enforces the same rule in RoleAuth.)
     3. Marks /api/auth/* responses as never cacheable.
     """
 

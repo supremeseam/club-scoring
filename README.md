@@ -5,6 +5,7 @@ PHRF **time-on-distance** race scoring for a yacht club: multiple fleets, saved 
 - **Back end:** Django 5 + Django Ninja (Python 3.12+), SQLite, password-only session login (NIST SP 800-63B AAL1), optional TOTP
 - **Front end:** React 18 + TypeScript + Mantine, types generated from the API's OpenAPI schema
 - **Scoring:** `backend/scoring/` is pure Python (no Django). All scoring happens on the server; the UI only displays it.
+- **Crew board:** skippers (logins made by the race committee) post crew openings; sailors sign up with or without an account. See `docs/CREW.md`.
 - **Hosting plan:** one EC2 t4g.micro running `compose.yml` (Caddy + Django + Litestream → S3), about $9–11/month. See `docs/RUNBOOK.md`.
 
 ## Deploy it for your club
@@ -70,7 +71,7 @@ docs/RUNBOOK.md
 - Abandoned/cancelled races don't count toward discard thresholds.
 
 ## Security notes
-Same-origin SPA + API behind Caddy, `HttpOnly` session cookies with CSRF header, 15+ character passwords with a blocklist, per-address and per-account login throttling, 12 h idle / 7 day session limits, forced change of temporary passwords, an auth audit log (see `docs/AUTHENTICATION.md`), strict CSP, audit history on starts/finishes (`django-simple-history`), public API exposes only boat name, sail #, design and skipper. Draft series are not public.
+Same-origin SPA + API behind Caddy, `HttpOnly` session cookies with CSRF header, 15+ character passwords with a blocklist, per-address and per-account login throttling, 12 h idle / 7 day session limits, forced change of temporary passwords, an auth audit log (see `docs/AUTHENTICATION.md`), strict CSP, skipper/crew logins are role-restricted and can never reach results, ratings or payments (`docs/CREW.md`), audit history on starts/finishes (`django-simple-history`), public API exposes only boat name, sail #, design and skipper. Draft series are not public.
 
 ## Known limitations
 - Online only: if signal drops, use the paper finish sheet and enter times ashore.

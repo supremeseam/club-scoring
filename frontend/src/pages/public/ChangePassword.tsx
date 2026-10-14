@@ -2,7 +2,7 @@ import { Alert, Button, Card, Center, List, PasswordInput, Stack, Text, Title } 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, useGet, type SiteConfig } from "../../api/client";
-import { useAuth } from "../../auth";
+import { HOME, useAuth } from "../../auth";
 import { toastOk } from "../../components/bits";
 
 /** Choose a new password. Also where someone holding a temporary password is sent first. */
@@ -29,7 +29,7 @@ export default function ChangePassword() {
       await api("/auth/change-password", { method: "POST", body: { current_password: current, new_password: next } });
       toastOk("Password changed");
       await refresh();
-      nav("/rc");
+      nav(HOME[user?.role ?? "rc"] ?? "/");
     } catch (ex) {
       setError(ex instanceof Error ? ex.message : "Could not change the password");
     } finally {

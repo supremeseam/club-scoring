@@ -46,13 +46,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export const useAuth = () => useContext(AuthCtx);
 
-/** Signed-in race committee only. Someone holding a temporary password goes to choose their own first. */
-export function RequireEditor({ children }: { children: ReactNode }) {
+/** Where each kind of login lands after signing in. */
+export const HOME: Record<string, string> = { rc: "/rc", skipper: "/skipper", crew: "/crew/my" };
+
+/** Signed in with the given role (default race committee). Someone holding a temporary password goes to choose their own first. */
+export function RequireEditor({ children, role = "rc" }: { children: ReactNode; role?: "rc" | "skipper" | "crew" }) {
   const { user, loading } = useAuth();
   const loc = useLocation();
   if (loading) return null;
   if (!user) return <Navigate to="/login" state={{ from: loc.pathname }} replace />;
   if (user.must_change_password) return <Navigate to="/change-password" replace />;
+  if (user.role !== role) return <Navigate to={HOME[user.role] ?? "/"} replace />;
   return <>{children}</>;
 }
 

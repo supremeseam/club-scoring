@@ -5,7 +5,7 @@ export type Posting = {
 };
 export type BoardBoat = { boat_id: number; name: string; sail_number: string; design: string; fleet: string; notes: string; postings: Posting[] };
 export type BoardRace = { race_id: number; label: string; date: string; volunteers: number };
-export type Board = { boats: BoardBoat[]; races: BoardRace[] };
+export type Board = { boats: BoardBoat[]; races: BoardRace[]; open_to_any: number };
 export type Options = { boats: { id: number; name: string; sail_number: string }[]; races: { id: number; label: string }[] };
 export type SignupStatus = {
   id: number; status: "pending" | "accepted" | "declined" | "withdrawn"; boat: string; boat_id: number | null;

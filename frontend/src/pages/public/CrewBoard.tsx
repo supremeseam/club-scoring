@@ -81,7 +81,7 @@ function SignupModal({ target, onClose }: { target: Target; onClose: () => void 
               <label>Website<input tabIndex={-1} autoComplete="off" value={f.website} onChange={set("website")} /></label>
             </div>
             <Text size="xs" c="dimmed">Your name, email and phone are shown only to that boat's skipper and the race committee, never on the public page.</Text>
-            <Button type="submit" loading={busy} disabled={!boat && !race}>Send request</Button>
+            <Button type="submit" loading={busy}>Send request</Button>
           </Stack>
         </form>
       )}
@@ -185,6 +185,7 @@ export default function CrewBoard() {
                 </Card>
               ))}
             </SimpleGrid>
+            {b.open_to_any > 0 && <Text size="sm" c="dimmed">{b.open_to_any} sailor{b.open_to_any === 1 ? " is" : "s are"} open to crewing on any boat, any race.</Text>}
             <Title order={4} mt="md">Upcoming races</Title>
             {b.races.length === 0 && <Text c="dimmed">No upcoming races are scheduled.</Text>}
             <SimpleGrid cols={{ base: 1, md: 2 }}>

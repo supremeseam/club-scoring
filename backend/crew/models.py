@@ -77,8 +77,6 @@ class CrewSignup(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
-        constraints = [models.CheckConstraint(
-            condition=models.Q(boat__isnull=False) | models.Q(race__isnull=False), name="signup_has_target")]
 
     @staticmethod
     def new_token() -> str:

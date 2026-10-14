@@ -203,7 +203,9 @@ def board(request):
         boat__isnull=True, status__in=["pending", "accepted"]).values("race_id").annotate(n=Count("id"))}
     races = [{"race_id": r.id, "label": _race_label(r), "date": r.date, "volunteers": volunteers.get(r.id, 0)}
              for r in _upcoming_races().order_by("date")]
-    return {"boats": sorted(boats.values(), key=lambda x: x["name"].lower()), "races": races}
+    anywhere = CrewSignup.objects.filter(boat__isnull=True, race__isnull=True, status="pending").count()
+    return {"boats": sorted(boats.values(), key=lambda x: x["name"].lower()), "races": races,
+            "open_to_any": anywhere}
 
 
 @public_router.get("/options")
@@ -237,8 +239,6 @@ def create_signup(request, data: SignupIn):
     else:
         boat = get_object_or_404(Boat, pk=data.boat_id) if data.boat_id else None
         race = get_object_or_404(_upcoming_races(), pk=data.race_id) if data.race_id else None
-    if boat is None and race is None:
-        raise HttpError(422, "Choose a boat, a race, or both")
     dup = CrewSignup.objects.filter(email__iexact=email, boat=boat, race=race, posting=posting) \
         .exclude(status__in=["withdrawn", "declined"])
     if dup.exists():
@@ -431,7 +431,10 @@ def skipper_signups(request):
     mine = _my_boats(request.user)
     # sailors who offered to crew on ANY boat in a race are visible to skippers with an open posting for that race
     open_races = CrewPosting.objects.filter(boat__in=mine, is_open=True, race__isnull=False).values("race_id")
-    qs = (CrewSignup.objects.filter(Q(boat__in=mine) | Q(boat__isnull=True, race_id__in=open_races))
+    # sailors open to ANY boat and race are visible to skippers who have at least one open posting
+    any_open = CrewPosting.objects.filter(boat__in=mine, is_open=True).exists()
+    general = Q(boat__isnull=True, race__isnull=True) if any_open else Q(pk__in=[])
+    qs = (CrewSignup.objects.filter(Q(boat__in=mine) | Q(boat__isnull=True, race_id__in=open_races) | general)
           .exclude(status="withdrawn").select_related("boat", "race", "race__series", "posting").distinct())
     return [_signup_full(x) for x in qs]
 

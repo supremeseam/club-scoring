@@ -194,7 +194,6 @@ def test_signup_rate_limited_per_address(world):
 
 def test_validation_and_duplicates(world):
     c = client()
-    assert signup(c).status_code == 422                                           # no target
     assert signup(c, boat_id=world["mine"].id, email="not-an-email").status_code == 422
     assert signup(c, boat_id=world["mine"].id, name="  ").status_code == 422
     assert signup(c, boat_id=9999).status_code == 404
@@ -299,3 +298,14 @@ def test_accepted_requests_fill_spots_on_the_public_board(world):
     CrewSignup.objects.filter(email="two@example.org").update(status="declined")
     row = client().get("/api/crew/board").json()["boats"][0]["postings"][0]
     assert (row["interested"], row["spots"]) == (0, 1)
+
+
+def test_offer_to_crew_anywhere_is_visible_only_to_skippers_with_an_open_posting(world):
+    assert signup(client()).status_code == 200                                    # any boat, any race
+    assert client().get("/api/crew/board").json()["open_to_any"] == 1
+    assert "casey@example.org" not in client().get("/api/crew/board").content.decode()
+    assert call(sign_in("sam"), "get", "/api/crew/skipper/signups").json() == []
+    sam = sign_in("sam")
+    call(sam, "post", f"/api/crew/skipper/boats/{world['mine'].id}/postings", {"role": "Bow"})
+    assert len(call(sam, "get", "/api/crew/skipper/signups").json()) == 1
+    assert call(sign_in("olly"), "get", "/api/crew/skipper/signups").json() == []

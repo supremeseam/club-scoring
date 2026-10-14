@@ -40,11 +40,18 @@ function InfoForm({ boat }: { boat: BoatRow }) {
 function PostingEditor({ boat, races }: { boat: BoatRow; races: SkipperOverview["races"] }) {
   const qc = useQueryClient();
   const [v, setV] = useState({ ...EMPTY });
+  const [editing, setEditing] = useState<number | null>(null);
   const refresh = () => qc.invalidateQueries({ queryKey: ["/crew/skipper/overview"] });
+  const startEdit = (p: Posting) => {
+    setEditing(p.id);
+    setV({ race_id: p.race_id, role: p.role, spots: p.spots, experience: p.experience, notes: p.notes, is_open: p.is_open ?? true });
+  };
+  const cancel = () => { setEditing(null); setV({ ...EMPTY }); };
   const add = async () => {
     try {
-      await api(`/crew/skipper/boats/${boat.id}/postings`, { method: "POST", body: v });
-      setV({ ...EMPTY });
+      if (editing) await api(`/crew/skipper/postings/${editing}`, { method: "PUT", body: v });
+      else await api(`/crew/skipper/boats/${boat.id}/postings`, { method: "POST", body: v });
+      cancel();
       await refresh();
     } catch (e) { toastError(e); }
   };
@@ -70,13 +77,14 @@ function PostingEditor({ boat, races }: { boat: BoatRow; races: SkipperOverview[
             {(p.experience || p.notes) && <Text size="sm" c="dimmed">{[p.experience, p.notes].filter(Boolean).join(" - ")}</Text>}
           </div>
           <Group gap="xs" wrap="nowrap">
+            <Button size="compact-sm" variant="default" onClick={() => startEdit(p)}>Edit</Button>
             <Button size="compact-sm" variant="light" onClick={() => toggle(p)}>{p.is_open ? "Close" : "Reopen"}</Button>
             <Button size="compact-sm" variant="subtle" color="red" onClick={() => remove(p)}>Delete</Button>
           </Group>
         </Group>
       ))}
       <Card withBorder>
-        <Text fw={600} mb="xs">Add an opening</Text>
+        <Text fw={600} mb="xs">{editing ? "Edit opening" : "Add an opening"}</Text>
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
           <Select label="For" clearable placeholder="Any race this season" value={v.race_id ? String(v.race_id) : null}
             onChange={(x) => setV({ ...v, race_id: x ? Number(x) : null })} data={races.map((r) => ({ value: String(r.id), label: r.label }))} />
@@ -85,7 +93,10 @@ function PostingEditor({ boat, races }: { boat: BoatRow; races: SkipperOverview[
           <TextInput label="Experience wanted" maxLength={120} value={v.experience} onChange={(e) => setV({ ...v, experience: e.currentTarget.value })} />
         </SimpleGrid>
         <Textarea mt="xs" label="Notes" maxLength={500} autosize minRows={1} value={v.notes} onChange={(e) => setV({ ...v, notes: e.currentTarget.value })} />
-        <Button mt="sm" onClick={add}>Post opening</Button>
+        <Group mt="sm">
+          <Button onClick={add}>{editing ? "Save changes" : "Post opening"}</Button>
+          {editing && <Button variant="default" onClick={cancel}>Cancel</Button>}
+        </Group>
       </Card>
     </Stack>
   );

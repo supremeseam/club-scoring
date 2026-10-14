@@ -211,7 +211,9 @@ def board(request):
 @public_router.get("/options")
 def options(request):
     """Choices for the sign-up form."""
-    return {"boats": list(Boat.objects.order_by("name").values("id", "name", "sail_number")),
+    registered = Boat.objects.filter(managers__isnull=False).distinct().order_by("name")
+    return {"boats": list(registered.values("id", "name", "sail_number")),       # boats with a skipper login
+            "all_boats": list(Boat.objects.order_by("name").values("id", "name", "sail_number")),
             "races": [{"id": r.id, "label": _race_label(r)} for r in _upcoming_races().order_by("date")]}
 
 
@@ -237,7 +239,7 @@ def create_signup(request, data: SignupIn):
         posting = get_object_or_404(CrewPosting, pk=data.posting_id, is_open=True)
         boat, race = posting.boat, posting.race
     else:
-        boat = get_object_or_404(Boat, pk=data.boat_id) if data.boat_id else None
+        boat = get_object_or_404(Boat.objects.filter(managers__isnull=False).distinct(), pk=data.boat_id)             if data.boat_id else None
         race = get_object_or_404(_upcoming_races(), pk=data.race_id) if data.race_id else None
     dup = CrewSignup.objects.filter(email__iexact=email, boat=boat, race=race, posting=posting) \
         .exclude(status__in=["withdrawn", "declined"])

@@ -78,7 +78,7 @@ function SkipperRequest() {
               <TextInput label="Email" type="email" required value={f.email} onChange={set("email")} />
             </SimpleGrid>
             <Select label="Your boat" searchable clearable value={boat} onChange={setBoat}
-              data={(opts.data?.boats ?? []).map((b) => ({ value: String(b.id), label: `${b.name} (${b.sail_number})` }))} />
+              data={(opts.data?.all_boats ?? []).map((b) => ({ value: String(b.id), label: `${b.name} (${b.sail_number})` }))} />
             {!boat && <TextInput label="Not listed? Boat name and sail number" maxLength={120} value={f.boat_text} onChange={set("boat_text")} />}
             <Textarea label="Anything the committee should know (optional)" maxLength={300} autosize minRows={2} value={f.message} onChange={set("message")} />
             <div style={HONEY} aria-hidden="true"><label>Website<input tabIndex={-1} autoComplete="off" value={f.website} onChange={set("website")} /></label></div>

@@ -309,3 +309,11 @@ def test_offer_to_crew_anywhere_is_visible_only_to_skippers_with_an_open_posting
     call(sam, "post", f"/api/crew/skipper/boats/{world['mine'].id}/postings", {"role": "Bow"})
     assert len(call(sam, "get", "/api/crew/skipper/signups").json()) == 1
     assert call(sign_in("olly"), "get", "/api/crew/skipper/signups").json() == []
+
+
+def test_only_boats_with_a_skipper_login_can_be_signed_up_to(world):
+    lone = Boat.objects.create(name="Unregistered", sail_number="99")
+    opts = client().get("/api/crew/options").json()
+    assert {b["name"] for b in opts["boats"]} == {"Alba", "Brisa"}
+    assert "Unregistered" in {b["name"] for b in opts["all_boats"]}               # still pickable by a new skipper
+    assert signup(client(), boat_id=lone.id).status_code == 404

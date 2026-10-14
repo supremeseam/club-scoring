@@ -1,11 +1,11 @@
 import { Alert, Anchor, Badge, Button, Card, Code, CopyButton, Group, Modal, Select, SimpleGrid, Stack, Text, Textarea, TextInput, Title } from "@mantine/core";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { api, useGet } from "../../api/client";
 import { useAuth } from "../../auth";
 import { Query, toastError, toastOk } from "../../components/bits";
-import { forgetToken, saveToken, savedTokens, STATUS_COLOR, type Board, type Options, type Posting, type SignupStatus } from "../../lib/crew";
+import { saveToken, STATUS_COLOR, type Board, type Options, type Posting, type SignupStatus } from "../../lib/crew";
 
 type Target = { posting_id?: number; boat_id?: number; race_id?: number; label: string };
 
@@ -89,51 +89,36 @@ function SignupModal({ target, onClose }: { target: Target; onClose: () => void 
   );
 }
 
+/** A signed-in crew account's own sign-ups (no one else sees this box). */
 function MyRequests() {
-  const [tokens, setTokens] = useState<string[]>(savedTokens());
-  const [rows, setRows] = useState<{ token: string; s: SignupStatus | null }[]>([]);
-  useEffect(() => {
-    let live = true;
-    (async () => {
-      const out = await Promise.all(tokens.map(async (token) => {
-        try { await api("/auth/csrf"); return { token, s: await api<SignupStatus>("/crew/signups/status", { method: "POST", body: { token } }) }; }
-        catch { return { token, s: null }; }
-      }));
-      if (live) setRows(out);
-    })();
-    return () => { live = false; };
-  }, [tokens]);
-  if (!rows.length) return null;
-  const withdraw = async (token: string) => {
+  const q = useGet<SignupStatus[]>("/crew/my/signups");
+  const qc = useQueryClient();
+  const withdraw = async (id: number) => {
     try {
-      await api("/crew/signups/withdraw", { method: "POST", body: { token } });
+      await api(`/crew/my/signups/${id}/withdraw`, { method: "POST" });
       toastOk("Request withdrawn");
-      setTokens([...tokens]);
+      await qc.invalidateQueries({ queryKey: ["/crew/my/signups"] });
+      await qc.invalidateQueries({ queryKey: ["/crew/board"] });
     } catch (e) { toastError(e); }
   };
+  const rows = (q.data ?? []).filter((s) => s.status !== "withdrawn");
+  if (!rows.length) return null;
   return (
     <Card withBorder>
-      <Title order={4} mb="xs">Your requests on this device</Title>
+      <Title order={4} mb="xs">Your requests</Title>
       <Stack gap="xs">
-        {rows.map(({ token, s }) => (
-          <Group key={token} justify="space-between" wrap="nowrap" align="flex-start">
-            {s ? (
-              <div>
-                <Group gap="xs">
-                  <Text fw={600}>{s.boat || "Any boat"}{s.race ? `, ${s.race}` : ""}</Text>
-                  <Badge color={STATUS_COLOR[s.status]}>{s.status}</Badge>
-                </Group>
-                {s.skipper_contact && (
-                  <Text size="sm">Skipper: {s.skipper_contact.name} {s.skipper_contact.email} {s.skipper_contact.phone} {s.skipper_contact.note}</Text>
-                )}
-              </div>
-            ) : <Text c="dimmed">This request no longer exists.</Text>}
-            <Group gap="xs" wrap="nowrap">
-              {s && s.status !== "withdrawn" && <Button size="compact-sm" variant="light" color="red" onClick={() => withdraw(token)}>Withdraw</Button>}
-              {(!s || s.status === "withdrawn" || s.status === "declined") && (
-                <Button size="compact-sm" variant="subtle" onClick={() => { forgetToken(token); setTokens(savedTokens()); }}>Remove</Button>
+        {rows.map((s) => (
+          <Group key={s.id} justify="space-between" wrap="nowrap" align="flex-start">
+            <div>
+              <Group gap="xs">
+                <Text fw={600}>{s.boat || "Any boat"}{s.race ? `, ${s.race}` : ""}</Text>
+                <Badge color={STATUS_COLOR[s.status]}>{s.status}</Badge>
+              </Group>
+              {s.skipper_contact && (
+                <Text size="sm">Skipper: {[s.skipper_contact.name, s.skipper_contact.email, s.skipper_contact.phone, s.skipper_contact.note].filter(Boolean).join(" - ")}</Text>
               )}
-            </Group>
+            </div>
+            <Button size="compact-sm" variant="light" color="red" onClick={() => withdraw(s.id)}>Withdraw</Button>
           </Group>
         ))}
       </Stack>
@@ -175,7 +160,7 @@ export default function CrewBoard() {
           {!user && <Button component={Link} to="/crew/join" variant="default">Skipper or crew account</Button>}
         </Group>
       </Group>
-      {!user && <MyRequests />}
+      {user?.role === "crew" && <MyRequests />}
       <Query q={board}>
         {(b) => (
           <>

@@ -185,16 +185,19 @@ def board(request):
                 .select_related("boat", "boat__default_fleet", "race", "race__series")
                 .filter(Q(race__isnull=True) | Q(race__status=Race.Status.SCHEDULED))
                 .exclude(race__series__status=Series.Status.DRAFT)
-                .annotate(interested=Count("signups", filter=Q(signups__status__in=["pending", "accepted"]))))
+                .annotate(interested=Count("signups", filter=Q(signups__status="pending")),
+                          filled=Count("signups", filter=Q(signups__status="accepted"))))
     notes = {i.boat_id: i.notes for i in BoatCrewInfo.objects.all()}
     boats: dict[int, dict] = {}
     for p in postings:
+        if p.filled >= p.spots:                           # every spot is taken: nothing left to offer publicly
+            continue
         b = boats.setdefault(p.boat_id, {
             "boat_id": p.boat_id, "name": p.boat.name, "sail_number": p.boat.sail_number, "design": p.boat.design,
             "fleet": p.boat.default_fleet.name if p.boat.default_fleet else "",
             "notes": notes.get(p.boat_id, ""), "postings": []})
         b["postings"].append({"id": p.id, "race_id": p.race_id, "race": _race_label(p.race) if p.race else "",
-                              "race_date": p.race.date if p.race else None, "role": p.role, "spots": p.spots,
+                              "race_date": p.race.date if p.race else None, "role": p.role, "spots": p.spots - p.filled,
                               "experience": p.experience, "notes": p.notes, "interested": p.interested})
     volunteers = {r["race_id"]: r["n"] for r in CrewSignup.objects.filter(
         boat__isnull=True, status__in=["pending", "accepted"]).values("race_id").annotate(n=Count("id"))}

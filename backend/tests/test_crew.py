@@ -283,3 +283,19 @@ def test_anonymous_cannot_reach_protected_crew_endpoints(world):
     c = client()
     for url in ("/api/crew/skipper/overview", "/api/crew/my/signups", "/api/manage/crew/signups"):
         assert call(c, "get", url).status_code == 401
+
+
+def test_accepted_requests_fill_spots_on_the_public_board(world):
+    p = CrewPosting.objects.create(boat=world["mine"], role="Bow", spots=2)
+    anon = client()
+    signup(anon, posting_id=p.id)
+    signup(anon, posting_id=p.id, email="two@example.org")
+    row = client().get("/api/crew/board").json()["boats"][0]["postings"][0]
+    assert (row["interested"], row["spots"]) == (2, 2)
+    sam = sign_in("sam")
+    for su in CrewSignup.objects.all():
+        call(sam, "post", f"/api/crew/skipper/signups/{su.id}/respond", {"status": "accepted"})
+    assert client().get("/api/crew/board").json()["boats"] == []            # full: no longer listed
+    CrewSignup.objects.filter(email="two@example.org").update(status="declined")
+    row = client().get("/api/crew/board").json()["boats"][0]["postings"][0]
+    assert (row["interested"], row["spots"]) == (0, 1)

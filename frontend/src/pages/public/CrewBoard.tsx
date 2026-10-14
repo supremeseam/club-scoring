@@ -175,7 +175,7 @@ export default function CrewBoard() {
           {!user && <Button component={Link} to="/crew/join" variant="default">Skipper or crew account</Button>}
         </Group>
       </Group>
-      <MyRequests />
+      {!user && <MyRequests />}
       <Query q={board}>
         {(b) => (
           <>

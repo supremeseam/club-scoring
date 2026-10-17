@@ -10,7 +10,7 @@ dependencies = [
   "django-simple-history>=3.7",
   "gunicorn>=22",
   "reportlab>=4.2",
-  "pypdf>=5",
+  "pypdf>=6.20.1",
   "openpyxl>=3.1",
 ]
 

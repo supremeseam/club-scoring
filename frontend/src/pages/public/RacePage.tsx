@@ -43,7 +43,7 @@ export default function RacePage() {
                 <Text span size="sm" c="dimmed"> {b.course ?? ""}{b.distance_nm ? `, ${Number(b.distance_nm).toFixed(2)} nm` : ""}</Text>
               </Title>
               <Podium block={b} />
-              <ResultsTable block={b} />
+              <ResultsTable block={b} pursuit={r.is_pursuit} />
               {b.rows.some((x) => x.note) && (
                 <Stack gap={2}>
                   <Text size="xs" fw={700} tt="uppercase" c="dimmed" style={{ letterSpacing: "0.06em" }}>Penalties &amp; notes</Text>

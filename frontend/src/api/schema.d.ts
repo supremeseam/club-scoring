@@ -668,6 +668,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/manage/starts/{pk}/pursuit-schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Pursuit Schedule
+         * @description Start times for a pursuit start: the slowest boat at the first gun, everyone else delayed by handicap.
+         */
+        get: operations["api_manage_pursuit_schedule"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/manage/starts/{pk}/rating-preview": {
         parameters: {
             query?: never;
@@ -1601,6 +1621,11 @@ export interface components {
              * @default 0
              */
             protests_pending: number;
+            /**
+             * Is Pursuit
+             * @default false
+             */
+            is_pursuit: boolean;
             /** Fleets */
             fleets: components["schemas"]["FleetResults"][];
         };
@@ -1935,6 +1960,11 @@ export interface components {
         };
         /** SeriesEditor */
         SeriesEditor: {
+            /**
+             * Race Format
+             * @default fleet
+             */
+            race_format: string;
             /** Name */
             name: string;
             /** Season */
@@ -2036,6 +2066,11 @@ export interface components {
         };
         /** SeriesCreate */
         SeriesCreate: {
+            /**
+             * Race Format
+             * @default fleet
+             */
+            race_format: string;
             /** Name */
             name: string;
             /** Season */
@@ -2113,6 +2148,11 @@ export interface components {
         };
         /** SeriesIn */
         SeriesIn: {
+            /**
+             * Race Format
+             * @default fleet
+             */
+            race_format: string;
             /** Name */
             name: string;
             /** Season */
@@ -2201,6 +2241,13 @@ export interface components {
         };
         /** RaceEditor */
         RaceEditor: {
+            /**
+             * Race Format
+             * @default
+             */
+            race_format: string;
+            /** Pursuit Target Minutes */
+            pursuit_target_minutes?: number | null;
             /** Number */
             number: number;
             /**
@@ -2225,6 +2272,11 @@ export interface components {
              * @default false
              */
             members_free: boolean;
+            /**
+             * Is Pursuit
+             * @default false
+             */
+            is_pursuit: boolean;
             /** Id */
             id: number;
             /** Series Id */
@@ -2232,6 +2284,13 @@ export interface components {
         };
         /** SingleRaceIn */
         SingleRaceIn: {
+            /**
+             * Race Format
+             * @default fleet
+             */
+            race_format: string;
+            /** Pursuit Target Minutes */
+            pursuit_target_minutes?: number | null;
             /** Name */
             name: string;
             /**
@@ -2271,6 +2330,13 @@ export interface components {
         };
         /** RaceIn */
         RaceIn: {
+            /**
+             * Race Format
+             * @default
+             */
+            race_format: string;
+            /** Pursuit Target Minutes */
+            pursuit_target_minutes?: number | null;
             /** Number */
             number?: number | null;
             /**
@@ -2338,6 +2404,59 @@ export interface components {
             distance_override?: number | null;
             /** Rating Type Id */
             rating_type_id?: number | null;
+        };
+        /** PursuitRow */
+        PursuitRow: {
+            /** Order */
+            order: number;
+            /** Boat Id */
+            boat_id: number;
+            /** Boat */
+            boat: string;
+            /** Sail Number */
+            sail_number: string;
+            /** Rating */
+            rating: number;
+            /** Offset Seconds */
+            offset_seconds: number;
+            /** Offset */
+            offset: string;
+            /**
+             * Start Time
+             * Format: date-time
+             */
+            start_time: string;
+        };
+        /** PursuitSchedule */
+        PursuitSchedule: {
+            /** Is Pursuit */
+            is_pursuit: boolean;
+            /** Method */
+            method: string;
+            /** Distance Nm */
+            distance_nm: number | null;
+            /** Target Minutes */
+            target_minutes: number | null;
+            /**
+             * First Gun
+             * Format: date-time
+             */
+            first_gun: string;
+            /** Rows */
+            rows: components["schemas"]["PursuitRow"][];
+            /** Skipped */
+            skipped: components["schemas"]["PursuitSkipped"][];
+            /** Error */
+            error?: string | null;
+        };
+        /** PursuitSkipped */
+        PursuitSkipped: {
+            /** Boat Id */
+            boat_id: number;
+            /** Boat */
+            boat: string;
+            /** Reason */
+            reason: string;
         };
         /** RatingPreviewRow */
         RatingPreviewRow: {
@@ -3831,6 +3950,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StartOut"];
+                };
+            };
+        };
+    };
+    api_manage_pursuit_schedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PursuitSchedule"];
                 };
             };
         };

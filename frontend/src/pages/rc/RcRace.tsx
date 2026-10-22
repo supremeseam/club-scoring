@@ -1,5 +1,5 @@
 import {
-  Alert, Badge, Button, Card, Checkbox, Group, NumberInput, Select, SimpleGrid, Stack, Text, TextInput, Title,
+  Alert, Badge, Button, Card, Checkbox, Group, NumberInput, Select, SimpleGrid, Stack, Table, Text, TextInput, Title,
 } from "@mantine/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
@@ -36,16 +36,21 @@ function RaceBody({ race, onRaceChanged }: { race: S["RaceEditor"]; onRaceChange
   const lineup = useGet<S["LineupRow"][]>(`/manage/races/${race.id}/lineup`);
   const payments = useGet<S["PaymentOut"][]>(`/manage/series/${race.series_id}/payments`);
   const ser = series.data?.find((x) => x.id === race.series_id);
+  const qc = useQueryClient();
 
-  const setStatus = async (status: string | null, final?: boolean, membersFree?: boolean) => {
+  const setStatus = async (status: string | null, final?: boolean, membersFree?: boolean,
+                           patch: { race_format?: string; pursuit_target_minutes?: number | null } = {}) => {
     try {
       await api(`/manage/races/${race.id}`, {
         method: "PUT",
         body: { date: race.date, status: status ?? race.status, time_limit_minutes: race.time_limit_minutes,
                 results_final: final ?? race.results_final, number: race.number,
-                members_free: membersFree ?? race.members_free },
+                members_free: membersFree ?? race.members_free,
+                race_format: patch.race_format ?? race.race_format ?? "",
+                pursuit_target_minutes: "pursuit_target_minutes" in patch ? patch.pursuit_target_minutes : race.pursuit_target_minutes },
       });
       onRaceChanged();
+      await refreshManage(qc);
     } catch (e) { toastError(e); }
   };
 
@@ -66,6 +71,15 @@ function RaceBody({ race, onRaceChanged }: { race: S["RaceEditor"]; onRaceChange
         {ser?.require_payment && (
           <Checkbox label="Members race free" checked={race.members_free}
             onChange={(e) => setStatus(null, undefined, e.currentTarget.checked)} />
+        )}
+        <Select label="Race format" w={230} allowDeselect={false} value={race.race_format || "inherit"}
+          data={[{ value: "inherit", label: `Same as ${single ? "race" : "series"} (${ser?.race_format === "pursuit" ? "pursuit" : "fleet"} start)` },
+                 { value: "fleet", label: "Fleet start" }, { value: "pursuit", label: "Pursuit start" }]}
+          onChange={(v) => setStatus(null, undefined, undefined, { race_format: v === "inherit" ? "" : (v ?? "") })} />
+        {race.is_pursuit && (
+          <NumberInput label="Slowest boat's expected minutes" description="Needed for ORCA/TCF pursuits" w={150} min={1}
+            value={race.pursuit_target_minutes ?? ""}
+            onChange={(v) => { if (v === "" || Number(v) >= 1) void setStatus(null, undefined, undefined, { pursuit_target_minutes: v === "" ? null : Number(v) }); }} />
         )}
         <Text size="sm" c="dimmed">{race.date}{single ? " Â· single race (not part of a series)" : ""}</Text>
       </Group>
@@ -174,10 +188,62 @@ function FleetPanel({ race, fleet, courses, types, start, boats, allBoats, enter
           <Button onClick={saveStart} loading={busy} disabled={!startOk}>{start ? "Update start" : "Set start"}</Button>
         </Group>
         <AddBoat fleet={fleet} raceSeriesId={race.series_id} allBoats={allBoats} entered={entered} single={single} />
+        {start && race.is_pursuit && <PursuitSchedule startId={start.id} />}
         {start && <RatingPreview startId={start.id} rtypeId={start.rating_type_id} types={types} allBoats={allBoats} raceDate={race.date} />}
         {start && <Finishes start={start} boats={boats} fleetName={fleet.name} race={race} series={series} payments={payments} seriesFleets={seriesFleets} />}
       </Stack>
     </Card>
+  );
+}
+
+/** Pursuit start times: the slowest boat starts at the first gun, everyone else waits out their handicap gap. */
+function PursuitSchedule({ startId }: { startId: number }) {
+  const q = useGet<S["PursuitSchedule"]>(`/manage/starts/${startId}/pursuit-schedule`);
+  return (
+    <Query q={q}>
+      {(s) => (
+        <Card withBorder padding="xs" bg="var(--mantine-color-blue-light)">
+          <Stack gap="xs">
+            <Group justify="space-between">
+              <Text fw={700}>Pursuit start times</Text>
+              <Text size="sm" c="dimmed">
+                {s.method === "tod" ? `Gap = rating difference × ${s.distance_nm ?? "?"} nm` : `Gap from TCF ratio over ${s.target_minutes ?? "?"} min`}
+              </Text>
+            </Group>
+            {s.error && <Alert color="orange">{s.error}.</Alert>}
+            {s.skipped.length > 0 && (
+              <Alert color="yellow" title="Not scheduled">
+                {s.skipped.map((x) => <div key={x.boat_id}>{x.boat}: {x.reason}</div>)}
+              </Alert>
+            )}
+            {s.rows.length > 0 && (
+              <Table.ScrollContainer minWidth={420}>
+                <Table withTableBorder bg="var(--mantine-color-body)">
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>Start #</Table.Th><Table.Th>Boat</Table.Th><Table.Th ta="right">Rating</Table.Th>
+                      <Table.Th ta="right">After first gun</Table.Th><Table.Th ta="right">Start at</Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {s.rows.map((r) => (
+                      <Table.Tr key={r.boat_id}>
+                        <Table.Td>{r.order}</Table.Td>
+                        <Table.Td>{r.boat} <Text span c="dimmed" size="xs">{r.sail_number}</Text></Table.Td>
+                        <Table.Td ta="right">{r.rating}</Table.Td>
+                        <Table.Td ta="right">{r.offset_seconds === 0 ? "first gun" : r.offset}</Table.Td>
+                        <Table.Td ta="right" fw={700}>{timeOf(r.start_time)}</Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </Table.ScrollContainer>
+            )}
+            <Text size="xs" c="dimmed">The first boat across the finish line wins. Start times change if boats or ratings are added, so check this before the first gun.</Text>
+          </Stack>
+        </Card>
+      )}
+    </Query>
   );
 }
 

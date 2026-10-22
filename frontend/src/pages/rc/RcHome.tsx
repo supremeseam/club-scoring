@@ -76,10 +76,13 @@ function SingleRace() {
   const [fl, setFl] = useState<string[]>([]);
   const [requirePay, setRequirePay] = useState(false);
   const [fee, setFee] = useState<number | "">(0);
+  const [format, setFormat] = useState<string | null>("fleet");
+  const [target, setTarget] = useState<number | "">("");
   const create = async () => {
     try {
       const r = await api<S["RaceEditor"]>("/manage/single-races", {
-        method: "POST", body: { name, date, fleet_ids: fl.map(Number), require_payment: requirePay, race_fee: fee === "" ? 0 : fee },
+        method: "POST", body: { name, date, fleet_ids: fl.map(Number), require_payment: requirePay, race_fee: fee === "" ? 0 : fee,
+                race_format: format ?? "fleet", pursuit_target_minutes: format === "pursuit" && target !== "" ? target : null },
       });
       await qc.invalidateQueries({ queryKey: ["/manage/series"] });
       nav(`/rc/races/${r.id}`);
@@ -93,6 +96,9 @@ function SingleRace() {
           <TextInput label="Race name" placeholder="e.g. Around the Island" value={name} onChange={(e) => setName(e.currentTarget.value)} />
           <TextInput label="Date" type="date" value={date} onChange={(e) => setDate(e.currentTarget.value)} />
           <MultiSelect label="Fleets" value={fl} onChange={setFl} data={(fleets.data ?? []).map((f) => ({ value: String(f.id), label: f.name }))} />
+          <Select label="Race format" w={190} allowDeselect={false} value={format} onChange={setFormat}
+            data={[{ value: "fleet", label: "Fleet start" }, { value: "pursuit", label: "Pursuit start" }]} />
+          {format === "pursuit" && <NumberInput label="Slowest boat's expected minutes" w={140} min={1} description="Only for ORCA/TCF" value={target} onChange={(v) => setTarget(v === "" ? "" : Number(v))} />}
           <Checkbox label="Require entry fee" checked={requirePay} onChange={(e) => setRequirePay(e.currentTarget.checked)} />
           {requirePay && <NumberInput label="Fee" prefix="$" w={100} decimalScale={2} min={0} value={fee} onChange={(v) => setFee(v === "" ? "" : Number(v))} />}
           <Button onClick={create} disabled={!name || !date || fl.length === 0}>Create race</Button>

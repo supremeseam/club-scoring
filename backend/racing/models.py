@@ -36,6 +36,11 @@ class Series(models.Model):
     rcd_max_credits = models.PositiveIntegerField(default=2)
     tle_as = models.CharField(max_length=3, default="DNF")
     combined_overall = models.BooleanField(default=False)
+    # How the series' races are started: all boats at their fleet's gun, or a pursuit start (each boat starts at
+    # a time worked out from its handicap; first across the line wins). A race can override this.
+    race_format = models.CharField(max_length=10, default="fleet", choices=[
+        ("fleet", "Fleet start (boats start together, results by corrected time)"),
+        ("pursuit", "Pursuit start (staggered by handicap, first across the line wins)")])
     # Optional entry fees. With require_payment on, a boat is scored in a race only if it has paid for
     # the whole series or for that race; everyone else is shown as a (ranked) guest.
     require_payment = models.BooleanField(default=False)
@@ -81,11 +86,20 @@ class Race(models.Model):
     time_limit_minutes = models.PositiveIntegerField(null=True, blank=True)
     results_final = models.BooleanField(default=False)
     members_free = models.BooleanField(default=False, help_text="Members do not pay the fee for this race")
+    # Blank = use the series' format. Pursuit with a time-on-time rating also needs the expected sailing time of
+    # the slowest boat, to turn the rating ratio into start gaps.
+    race_format = models.CharField(max_length=10, blank=True, choices=[("", "Same as series"),
+                                                                       ("fleet", "Fleet start"), ("pursuit", "Pursuit start")])
+    pursuit_target_minutes = models.PositiveIntegerField(null=True, blank=True)
     results_updated_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["series", "number"]
         constraints = [models.UniqueConstraint(fields=["series", "number"], name="uniq_race_number")]
+
+    @property
+    def is_pursuit(self) -> bool:
+        return (self.race_format or self.series.race_format) == "pursuit"
 
     def __str__(self):
         return f"{self.series} R{self.number}"

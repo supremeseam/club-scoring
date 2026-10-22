@@ -18,7 +18,7 @@ export function StatusBadge({ final }: { final: boolean }) {
 
 const MARK: Record<string, string> = { fallback: "†", manual: "‡" };
 
-export function ResultsTable({ block }: { block: S["FleetResults"] }) {
+export function ResultsTable({ block, pursuit = false }: { block: S["FleetResults"]; pursuit?: boolean }) {
   return (
     <Table.ScrollContainer minWidth={720}>
       <Table striped highlightOnHover className="brand-table">
@@ -30,8 +30,8 @@ export function ResultsTable({ block }: { block: S["FleetResults"] }) {
             <Table.Th>Skipper</Table.Th>
             <Table.Th>Club</Table.Th>
             <Table.Th ta="right">Rating ({block.rating_type})</Table.Th>
-            <Table.Th ta="right">Elapsed</Table.Th>
-            <Table.Th ta="right">Corrected</Table.Th>
+            <Table.Th ta="right">{pursuit ? "Own elapsed" : "Elapsed"}</Table.Th>
+            <Table.Th ta="right">{pursuit ? "Since 1st gun" : "Corrected"}</Table.Th>
             <Table.Th ta="right">Pts</Table.Th>
           </Table.Tr>
         </Table.Thead>

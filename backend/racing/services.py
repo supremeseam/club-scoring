@@ -1,6 +1,7 @@
 """Glue between the Django models and the pure scoring engine."""
 from __future__ import annotations
 
+from datetime import timedelta
 from decimal import Decimal
 
 from django.db import transaction
@@ -11,6 +12,7 @@ from racing.models import Finish, Payment, Protest, Race, Series, Start
 from racing.ratings import resolve_rating
 from scoring.low_point import RaceInput, Result, SeriesRules, score_guest, score_series, standing_key
 from scoring.phrf_tod import SYSTEMS, elapsed_seconds, format_hms
+from scoring.pursuit import pursuit_offsets
 
 NON_FINISH = {"DNC", "DNS", "OCS", "DNF", "RET", "DSQ", "DNE", "UFD", "BFD", "TLE", "RCD"}
 
@@ -21,12 +23,98 @@ def recalc_finish(f: Finish) -> None:
     f.elapsed_seconds = f.corrected_seconds = None
     if f.status in NON_FINISH or not f.finish_time:
         return
+    if f.start.race.is_pursuit:
+        # the handicap is already in the start times: placing is by who crosses the line first, so the
+        # "corrected" figure is simply time since the first gun, and elapsed is time since the boat's own start
+        since_gun = elapsed_seconds(f.start.start_time, f.finish_time)
+        f.corrected_seconds = since_gun
+        f.elapsed_seconds = since_gun - _start_offsets(f.start).get(f.boat_id, 0)
+        return
     dist = f.start.distance_nm
     f.elapsed_seconds = elapsed_seconds(f.start.start_time, f.finish_time)
     system = SYSTEMS[f.rating_type.method]
     needs_distance = f.rating_type.method == "tod"
     if f.rating_value is not None and (dist is not None or not needs_distance):
         f.corrected_seconds = system.corrected(f.elapsed_seconds, f.rating_value, dist)
+
+
+# ---- pursuit starts ---------------------------------------------------------
+def pursuit_schedule(start: Start) -> dict:
+    """When each boat in this start should start, if the race is a pursuit. Based on the boats entered in the
+    fleet (plus any moved here), their ratings for the race date, the distance and, for time-on-time, the
+    race's target length. Boats that can't be scheduled are listed in `skipped` with the reason."""
+    race = start.race
+    method = start.rating_type.method
+    out = {"is_pursuit": race.is_pursuit, "method": method, "distance_nm": start.distance_nm,
+           "target_minutes": race.pursuit_target_minutes, "first_gun": start.start_time,
+           "rows": [], "skipped": [], "error": None}
+    if not race.is_pursuit:
+        return out
+    here = {f.boat_id: f for f in start.finishes.select_related("boat", "rating_type")}
+    elsewhere = set(Finish.objects.filter(start__race=race).exclude(start=start).values_list("boat_id", flat=True))
+    boats = {e.boat_id: e.boat for e in race.series.entries.filter(fleet_id=start.fleet_id).select_related("boat")}
+    boats.update({b: f.boat for b, f in here.items()})
+    ratings, found = {}, {}
+    for boat_id, boat in boats.items():
+        if boat_id in elsewhere:
+            continue
+        rtype = effective_rating_type(boat, start)
+        f = here.get(boat_id)
+        value = f.rating_value if f is not None and f.rating_value is not None else None
+        if value is None:
+            hit = resolve_rating(boat, rtype, race.date)
+            value = hit[0] if hit else None
+        if rtype.method != method:
+            out["skipped"].append({"boat_id": boat_id, "boat": boat.name,
+                                   "reason": f"scored with {rtype.code}, which can't share a pursuit with {start.rating_type.code}"})
+        elif value is None:
+            out["skipped"].append({"boat_id": boat_id, "boat": boat.name, "reason": f"no {rtype.code} rating"})
+        else:
+            ratings[boat_id], found[boat_id] = value, boat
+    try:
+        offsets = pursuit_offsets(method, ratings, start.distance_nm,
+                                  race.pursuit_target_minutes * 60 if race.pursuit_target_minutes else None)
+    except ValueError as e:
+        out["error"] = str(e)
+        return out
+    order = sorted(ratings, key=lambda b: (offsets[b], found[b].name.lower()))
+    for i, boat_id in enumerate(order, 1):
+        b = found[boat_id]
+        out["rows"].append({"order": i, "boat_id": boat_id, "boat": b.name, "sail_number": b.sail_number,
+                            "rating": ratings[boat_id], "offset_seconds": offsets[boat_id],
+                            "offset": format_hms(offsets[boat_id]),
+                            "start_time": start.start_time + timedelta(seconds=offsets[boat_id])})
+    return out
+
+
+def _start_offsets(start: Start) -> dict:
+    cache = getattr(start, "_pursuit_offsets", None)
+    if cache is None:
+        cache = {r["boat_id"]: r["offset_seconds"] for r in pursuit_schedule(start)["rows"]}
+        start._pursuit_offsets = cache
+    return cache
+
+
+@transaction.atomic
+def refresh_pursuit(start: Start) -> None:
+    """Recalculate every finish in a pursuit start (the schedule moves when boats or ratings change)."""
+    start = Start.objects.select_related("race__series", "rating_type", "course").get(pk=start.pk)
+    if not start.race.is_pursuit:
+        return
+    for f in start.finishes.select_related("boat", "rating_type"):
+        f.start = start
+        recalc_finish(f)
+        f.save()
+
+
+def refresh_pursuit_series(series: Series) -> None:
+    for race in series.races.all():
+        refresh_pursuit_race(race)
+
+
+def refresh_pursuit_race(race: Race) -> None:
+    for st in race.starts.all():
+        refresh_pursuit(st)
 
 
 def effective_rating_type(boat, start: Start):
@@ -76,6 +164,7 @@ def reresolve_start(start: Start) -> list[dict]:
             changes.append({"boat": f.boat.name, "old": old[1], "new": f.rating_value,
                             "source": f.rating_source})
     touch_race(start.race)
+    refresh_pursuit(start)              # a rating change moves the start times, so recalculate the whole start
     return changes
 
 
@@ -285,5 +374,5 @@ def race_results(race: Race, public: bool = False) -> dict:
     return {"race_id": race.id, "number": race.number, "date": race.date,
             "status": race.status, "final": race.results_final,
             "updated_at": race.results_updated_at,
-            "series_id": series.id, "series_name": str(series), "fleets": blocks,
+            "series_id": series.id, "series_name": str(series), "fleets": blocks, "is_pursuit": race.is_pursuit,
             "protests_pending": Protest.objects.filter(race=race, status__in=Protest.PENDING).count()}

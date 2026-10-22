@@ -60,7 +60,7 @@ function Detail({ series }: { series: Series }) {
           <Button variant="default" onClick={() => setEditing(true)}>Edit settings</Button>
         </Group>
         <Text size="sm">
-          Scoring: {series.scoring_system === "high" ? "high point" : "low point"}{" \u00b7 "}Discards: {series.discard_thresholds.length ? series.discard_thresholds.map((t) => `1 after ${t} races`).join(", ") : "none"}
+          {series.race_format === "pursuit" ? "Pursuit start � " : ""}Scoring: {series.scoring_system === "high" ? "high point" : "low point"}{" \u00b7 "}Discards: {series.discard_thresholds.length ? series.discard_thresholds.map((t) => `1 after ${t} races`).join(", ") : "none"}
           {" · "}RC duty credit: {series.rcd_method}{" · "}Combined overall: {series.combined_overall ? "on" : "off"}
         </Text>
         <Entries series={series} />
@@ -135,7 +135,7 @@ function SeriesForm({ series, onClose, onSaved }: { series?: Series; onClose: ()
   const qc = useQueryClient();
   const year = new Date().getFullYear();
   const [f, setF] = useState<S["SeriesIn"]>(series ?? {
-    name: "", season: year, description: "", fleet_ids: [], discard_thresholds: [], scoring_basis: "entries", scoring_system: "low",
+    name: "", season: year, description: "", fleet_ids: [], discard_thresholds: [], scoring_basis: "entries", scoring_system: "low", race_format: "fleet",
     rcd_method: "off", rcd_max_credits: 2, tle_as: "DNF", combined_overall: false, status: "draft",
     require_payment: false, series_fee: 0, race_fee: 0, member_series_fee: null, member_race_fee: null,
   });
@@ -169,6 +169,12 @@ function SeriesForm({ series, onClose, onSaved }: { series?: Series; onClose: ()
         <MultiSelect label="Fleets" withAsterisk error={(f.fleet_ids ?? []).length === 0 ? "Pick at least one fleet" : undefined}
           value={(f.fleet_ids ?? []).map(String)} onChange={(v) => setF({ ...f, fleet_ids: v.map(Number) })}
           data={(fleets.data ?? []).map((x) => ({ value: String(x.id), label: x.name }))} />
+        <Select label="Race format" allowDeselect={false} value={f.race_format ?? "fleet"}
+          description={f.race_format === "pursuit"
+            ? "Pursuit start: the slowest boat starts first and the others are delayed by their handicap, so the first boat across the line wins. The race screen shows each boat's start time. A single race can override this."
+            : "Fleet start: boats start together and results use corrected time."}
+          data={[{ value: "fleet", label: "Fleet start (corrected time)" }, { value: "pursuit", label: "Pursuit start (first across the line wins)" }]}
+          onChange={(v) => setF({ ...f, race_format: v ?? "fleet" })} />
         <Select label="Scoring system" allowDeselect={false} value={f.scoring_system ?? "low"}
           description={f.scoring_system === "high"
             ? "High point: 1st place scores the most points (the number of boats), each place one less, non-finishers 0. Highest total wins."

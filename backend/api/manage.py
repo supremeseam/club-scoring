@@ -268,7 +268,7 @@ def _series_out(x: Series) -> dict:
     return {"id": x.id, "name": x.name, "season": x.season, "description": x.description,
             "fleet_ids": list(x.fleets.values_list("id", flat=True)),
             "discard_thresholds": x.discard_thresholds, "scoring_basis": x.scoring_basis,
-            "scoring_system": x.scoring_system,
+            "scoring_system": x.scoring_system, "race_format": x.race_format,
             "rcd_method": x.rcd_method, "rcd_max_credits": x.rcd_max_credits,
             "tle_as": x.tle_as, "combined_overall": x.combined_overall, "status": x.status,
             "kind": x.kind, "require_payment": x.require_payment,
@@ -281,6 +281,8 @@ def _validate_series(data: s.SeriesIn):
         raise HttpError(422, "scoring_basis must be entries or starters")
     if data.scoring_system not in ("low", "high"):
         raise HttpError(422, "scoring_system must be low or high")
+    if data.race_format not in ("fleet", "pursuit"):
+        raise HttpError(422, "race_format must be fleet or pursuit")
     if data.rcd_method not in ("off", "all_other", "before"):
         raise HttpError(422, "bad rcd_method")
     if data.tle_as not in ("DNF", "DNC", "DSQ"):
@@ -351,6 +353,7 @@ def set_entries(request, pk: int, data: list[s.EntryIO]):
     for boat_id, (fleet_id, in_series) in wanted.items():
         SeriesEntry.objects.update_or_create(series=ser, boat_id=boat_id,
                                              defaults={"fleet_id": fleet_id, "in_series": in_series})
+    services.refresh_pursuit_series(ser)
     return get_entries(request, pk)
 
 
@@ -363,6 +366,7 @@ def add_entry(request, pk: int, data: s.EntryIO):
         ser.fleets.add(get_object_or_404(Fleet, pk=data.fleet_id))
     SeriesEntry.objects.update_or_create(series=ser, boat_id=data.boat_id,
                                          defaults={"fleet_id": data.fleet_id, "in_series": data.in_series})
+    services.refresh_pursuit_series(ser)
     return data
 
 
@@ -372,12 +376,15 @@ def create_single_race(request, data: s.SingleRaceIn):
     """A standalone race that is not part of a series (stored as a one-race 'single' series)."""
     if not data.fleet_ids:
         raise HttpError(422, "Pick at least one fleet")
+    if data.race_format not in ("fleet", "pursuit"):
+        raise HttpError(422, "race_format must be fleet or pursuit")
     ser = _save(Series(name=data.name, season=data.date.year, description=data.description,
-                       kind=Series.Kind.SINGLE, status=Series.Status.ACTIVE,
+                       kind=Series.Kind.SINGLE, status=Series.Status.ACTIVE, race_format=data.race_format,
                        require_payment=data.require_payment,
                        series_fee=D(data.race_fee), race_fee=D(data.race_fee)))
     ser.fleets.set(Fleet.objects.filter(pk__in=data.fleet_ids))
-    return _race_out(Race.objects.create(series=ser, number=1, date=data.date))
+    return _race_out(Race.objects.create(series=ser, number=1, date=data.date,
+                                         pursuit_target_minutes=data.pursuit_target_minutes))
 
 
 @router.post("/series/{pk}/clone", response=s.SeriesEditor)
@@ -388,7 +395,7 @@ def clone_series(request, pk: int, data: s.CloneIn):
     new = _save(Series(
         name=data.name or src.name, season=data.season, description=src.description,
         discard_thresholds=src.discard_thresholds, scoring_basis=src.scoring_basis,
-        scoring_system=src.scoring_system,
+        scoring_system=src.scoring_system, race_format=src.race_format,
         rcd_method=src.rcd_method, rcd_max_credits=src.rcd_max_credits, tle_as=src.tle_as,
         combined_overall=src.combined_overall, status=Series.Status.DRAFT))
     new.fleets.set(src.fleets.all())
@@ -397,7 +404,8 @@ def clone_series(request, pk: int, data: s.CloneIn):
          for e in src.entries.all()])
     Race.objects.bulk_create(
         [Race(series=new, number=r.number, date=r.date + timedelta(days=data.shift_days),
-              time_limit_minutes=r.time_limit_minutes) for r in src.races.all()])
+              time_limit_minutes=r.time_limit_minutes, race_format=r.race_format,
+              pursuit_target_minutes=r.pursuit_target_minutes) for r in src.races.all()])
     return _series_out(new)
 
 
@@ -405,12 +413,18 @@ def clone_series(request, pk: int, data: s.CloneIn):
 def _race_out(r: Race) -> dict:
     return {"id": r.id, "series_id": r.series_id, "number": r.number, "date": r.date,
             "status": r.status, "time_limit_minutes": r.time_limit_minutes,
-            "results_final": r.results_final, "members_free": r.members_free}
+            "results_final": r.results_final, "members_free": r.members_free,
+            "race_format": r.race_format, "pursuit_target_minutes": r.pursuit_target_minutes,
+            "is_pursuit": r.is_pursuit}
 
 
 def _check_race(data: s.RaceIn):
     if data.status not in ("scheduled", "sailed", "abandoned", "cancelled"):
         raise HttpError(422, "bad race status")
+    if data.race_format not in ("", "fleet", "pursuit"):
+        raise HttpError(422, "race_format must be blank, fleet or pursuit")
+    if data.pursuit_target_minutes is not None and data.pursuit_target_minutes < 1:
+        raise HttpError(422, "The target race length must be at least one minute")
 
 
 @router.get("/series/{pk}/races", response=list[s.RaceEditor])
@@ -425,6 +439,7 @@ def create_race(request, pk: int, data: s.RaceIn):
     number = data.number or (ser.races.order_by("-number").values_list("number", flat=True).first() or 0) + 1
     return _race_out(_save(Race(series=ser, number=number, date=data.date, status=data.status,
                                 time_limit_minutes=data.time_limit_minutes,
+                                race_format=data.race_format, pursuit_target_minutes=data.pursuit_target_minutes,
                                 results_final=data.results_final, members_free=data.members_free)))
 
 
@@ -437,9 +452,11 @@ def update_race(request, pk: int, data: s.RaceIn):
     r.date, r.status = data.date, data.status
     r.time_limit_minutes, r.results_final = data.time_limit_minutes, data.results_final
     r.members_free = data.members_free
+    r.race_format, r.pursuit_target_minutes = data.race_format, data.pursuit_target_minutes
     if data.number:
         r.number = data.number
     _save(r)
+    services.refresh_pursuit_race(r)            # a format or target change moves the start times
     services.touch_race(r)
     return _race_out(r)
 
@@ -482,6 +499,13 @@ def upsert_start(request, pk: int, data: s.StartIn):
     resp = _start_out(start)
     resp["rating_changes"] = len(changes)
     return resp
+
+
+@router.get("/starts/{pk}/pursuit-schedule", response=s.PursuitSchedule)
+def pursuit_schedule(request, pk: int):
+    """Start times for a pursuit start: the slowest boat at the first gun, everyone else delayed by handicap."""
+    start = get_object_or_404(Start.objects.select_related("race__series", "rating_type", "course"), pk=pk)
+    return services.pursuit_schedule(start)
 
 
 @router.get("/starts/{pk}/rating-preview", response=list[s.RatingPreviewRow])
@@ -547,7 +571,9 @@ def upsert_finishes(request, pk: int, data: list[s.FinishIn]):
                                      "add one to the boat or enter one manually")
             if f.rating_type.method == "tot" and f.rating_value <= 0:
                 raise HttpError(422, "A time-on-time rating (TCF) must be greater than zero")
+        f.start = start
         services.save_finish(f, resnapshot=False)
+    services.refresh_pursuit(start)             # ratings or lineup may have changed the pursuit start times
     return get_finishes(request, pk)
 
 
@@ -555,7 +581,9 @@ def upsert_finishes(request, pk: int, data: list[s.FinishIn]):
 def delete_finish(request, pk: int):
     f = get_object_or_404(Finish.objects.select_related("start__race"), pk=pk)
     race = f.start.race
+    start = f.start
     f.delete()
+    services.refresh_pursuit(start)
     services.touch_race(race)
     return {"ok": True}
 
@@ -726,6 +754,9 @@ def move_boat(request, pk: int, data: s.MoveBoatIn):
             finish.rating_type = services.effective_rating_type(finish.boat, target)
         services.recalc_finish(finish)
         finish.save()
+    services.refresh_pursuit(start)
+    if moves:
+        services.refresh_pursuit(target)
     services.touch_race(start.race)
     return {"moved_result": moves, "warnings": warnings}
 
@@ -746,5 +777,6 @@ def remove_boat(request, pk: int, boat_id: int, remove_entry: bool = False):
             raise HttpError(409, "This boat has results in other races of the series. "
                                  "Clear those first, or just clear this race's result.")
         removed = SeriesEntry.objects.filter(series=ser, boat_id=boat_id).delete()[0] > 0
+    services.refresh_pursuit(start)
     services.touch_race(start.race)
     return {"cleared_result": cleared, "removed_entry": removed}

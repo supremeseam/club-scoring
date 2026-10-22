@@ -6,6 +6,7 @@ PHRF **time-on-distance** race scoring for a yacht club: multiple fleets, saved 
 - **Front end:** React 18 + TypeScript + Mantine, types generated from the API's OpenAPI schema
 - **Scoring:** `backend/scoring/` is pure Python (no Django). All scoring happens on the server; the UI only displays it.
 - **Crew board:** skippers (logins made by the race committee) post crew openings; sailors sign up with or without an account. See `docs/CREW.md`.
+- **Pursuit starts:** a series or a single race can use a pursuit format; the race screen works out each boat's start time. See `docs/PURSUIT.md`.
 - **Hosting plan:** one EC2 t4g.micro running `compose.yml` (Caddy + Django + Litestream → S3), about $9–11/month. See `docs/RUNBOOK.md`.
 
 ## Deploy it for your club

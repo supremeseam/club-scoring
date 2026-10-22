@@ -111,6 +111,7 @@ class RaceResults(Schema):
     series_id: int
     series_name: str
     protests_pending: int = 0
+    is_pursuit: bool = False
     fleets: list[FleetResults]
 
 
@@ -244,6 +245,7 @@ class CourseOut(Schema):
 
 
 class SeriesIn(Schema):
+    race_format: str = "fleet"
     name: str
     season: int
     description: str = ""
@@ -279,6 +281,8 @@ class SeriesEditor(SeriesIn):
 
 
 class SingleRaceIn(Schema):
+    race_format: str = "fleet"
+    pursuit_target_minutes: int | None = None
     name: str
     date: date
     fleet_ids: list[int]
@@ -300,6 +304,8 @@ class CloneIn(Schema):
 
 
 class RaceIn(Schema):
+    race_format: str = ""
+    pursuit_target_minutes: int | None = None
     number: int | None = None
     date: date
     status: str = "scheduled"
@@ -309,6 +315,7 @@ class RaceIn(Schema):
 
 
 class RaceEditor(RaceIn):
+    is_pursuit: bool = False
     id: int
     series_id: int
     number: int
@@ -442,3 +449,31 @@ class RemoveBoatOut(Schema):
 class LineupRow(Schema):
     fleet_id: int
     boat_ids: list[int]
+
+
+class PursuitRow(Schema):
+    order: int
+    boat_id: int
+    boat: str
+    sail_number: str
+    rating: float
+    offset_seconds: int
+    offset: str
+    start_time: datetime
+
+
+class PursuitSkipped(Schema):
+    boat_id: int
+    boat: str
+    reason: str
+
+
+class PursuitSchedule(Schema):
+    is_pursuit: bool
+    method: str
+    distance_nm: float | None
+    target_minutes: int | None
+    first_gun: datetime
+    rows: list[PursuitRow]
+    skipped: list[PursuitSkipped]
+    error: str | None = None

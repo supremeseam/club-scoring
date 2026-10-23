@@ -167,10 +167,23 @@ def login_view(request, data: s.LoginIn):
     return _me(user)
 
 
-@api.post("/auth/logout", auth=account_auth, tags=["auth"])
+@api.post("/auth/logout", tags=["auth"])
 def logout_view(request):
+    """End the session, whoever asks and whatever state it is in (signed out already is fine).
+
+    The server-side session is deleted, so the cookie is useless even if it is copied. The Clear-Site-Data header
+    also tells the browser to drop cookies, cached responses and stored data for this site, so nothing private is
+    left behind on a shared computer. (CSRF is still checked, so another site can't sign someone out.)
+    """
+    _check_csrf(request)
+    user = request.user if request.user.is_authenticated else None
     logout(request)
-    return {"ok": True}
+    resp = api.create_response(request, {"ok": True}, status=200)
+    resp["Clear-Site-Data"] = '"cache", "cookies", "storage"'
+    resp["Cache-Control"] = "no-store"
+    if user is not None:
+        log_event("logout_complete", request, user.get_username())
+    return resp
 
 
 @api.get("/auth/me", response=s.Me, auth=account_auth, tags=["auth"])

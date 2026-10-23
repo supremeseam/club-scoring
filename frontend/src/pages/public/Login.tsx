@@ -1,5 +1,6 @@
 import { Alert, Button, Card, Center, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { api, type S } from "../../api/client";
 import { HOME, useAuth } from "../../auth";
@@ -12,6 +13,7 @@ export default function Login() {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const { refresh, expired, clearExpired } = useAuth();
+  const qc = useQueryClient();
   const { data: cfg } = useSite();
   const nav = useNavigate();
   const loc = useLocation();
@@ -23,6 +25,7 @@ export default function Login() {
       await api("/auth/csrf");
       const me = await api<S["Me"]>("/auth/login", { method: "POST", body: { username, password, otp } });
       clearExpired();
+      qc.removeQueries({ predicate: (q) => q.queryKey[0] !== "me" && q.queryKey[0] !== "/config" });   // nothing from a previous user
       await refresh();
       // a temporary password must be replaced before anything else
       nav(me.must_change_password ? "/change-password" : ((loc.state as { from?: string } | null)?.from ?? HOME[me.role] ?? "/"));

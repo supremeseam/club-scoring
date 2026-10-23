@@ -186,6 +186,31 @@ def test_a_session_without_a_start_marker_is_treated_as_expired():
     assert c.get("/api/auth/me").status_code == 401
 
 
+def test_logout_ends_the_session_clears_browser_data_and_is_idempotent():
+    make_user()
+    c = new_client()
+    login(c)
+    old_cookie = c.cookies["sessionid"].value
+    r = post(c, "/api/auth/logout", {})
+    assert r.status_code == 200 and "cookies" in r["Clear-Site-Data"] and "storage" in r["Clear-Site-Data"]
+    assert r["Cache-Control"] == "no-store"
+    assert c.get("/api/auth/me").status_code == 401
+    # the old cookie is dead server-side, even if someone copied it before logout
+    stolen = new_client()
+    stolen.cookies["sessionid"] = old_cookie
+    assert stolen.get("/api/auth/me").status_code == 401
+    assert post(c, "/api/auth/logout", {}).status_code == 200            # signing out twice is fine
+
+
+def test_logout_still_requires_csrf():
+    make_user()
+    c = new_client()
+    login(c)
+    r = c.post("/api/auth/logout", "{}", content_type="application/json")        # no CSRF header
+    assert r.status_code == 403
+    assert c.get("/api/auth/me").status_code == 200
+
+
 def test_logout_ends_the_session():
     make_user()
     c = new_client()

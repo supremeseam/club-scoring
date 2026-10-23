@@ -1,7 +1,9 @@
 import { Anchor, AppShell, Badge, Button, Group, Menu, Text } from "@mantine/core";
 import { useQueryClient } from "@tanstack/react-query";
-import { Link, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { Link, Route, Routes, useLocation } from "react-router-dom";
 import { api, authSettings } from "./api/client";
+import { toastError } from "./components/bits";
+import { BASE } from "./lib/base";
 import { clearTokens } from "./lib/tokens";
 import { RequireEditor, RequireSignedIn, useAuth } from "./auth";
 import { Burgee, SiteFooter, useSite } from "./components/Brand";
@@ -29,7 +31,7 @@ const LINKS: [string, string][] = [
   ["/manage/boats", "Boats & ratings"],
   ["/manage/fleets", "Fleets & rating types"],
   ["/manage/courses", "Marks & courses"],
-  ["/manage/crew", "Crew board"],
+  ["/manage/crew", "Crew admin"],
 ];
 const SKIPPER_LINKS: [string, string][] = [["/skipper", "My boat's crew"]];
 const CREW_LINKS: [string, string][] = [["/crew/my", "My sign-ups"]];
@@ -37,18 +39,25 @@ const CREW_LINKS: [string, string][] = [["/crew/my", "My sign-ups"]];
 export default function App() {
   const { user } = useAuth();
   const { data: site } = useSite();
-  const nav = useNavigate();
   const qc = useQueryClient();
   const { pathname } = useLocation();
   const links = user?.role === "skipper" ? SKIPPER_LINKS : user?.role === "crew" ? CREW_LINKS
     : user?.manages_boats ? [...LINKS, ...SKIPPER_LINKS] : LINKS;
   const cognito = site?.auth_mode === "cognito";
   const logout = async () => {
-    await api("/auth/logout", { method: "POST" });
+    try {
+      await api("/auth/csrf");                                  // a fresh token, as the login page does
+      await api("/auth/logout", { method: "POST" });
+    } catch {
+      // never pretend to be signed out when the server did not confirm it
+      toastError(new Error("Could not sign you out. Check your connection and try again, or close this browser window."));
+      return;
+    }
     // Cognito mode: signing out means forgetting the tokens the club website's sign-in page keeps in this tab
     if (cognito) clearTokens(window.sessionStorage, (await authSettings()).keys);
-    await qc.invalidateQueries({ queryKey: ["me"] });
-    nav("/");
+    // Drop everything held in memory (other people's data on a shared computer) and reload from scratch.
+    qc.clear();
+    window.location.replace(`${BASE}/`);
   };
   return (
     <AppShell header={{ height: 62 }} padding="md" className="page-bg">

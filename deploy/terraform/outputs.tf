@@ -1,7 +1,7 @@
 locals {
   ip = aws_eip.server.public_ip
   # Let's Encrypt refuses certificates for Amazon's own names (*.amazonaws.com), so until you have a domain use
-  # sslip.io, a free service that turns an IP into a name (34.215.78.72 -> 34-215-78-72.sslip.io).
+  # sslip.io, a free service that turns an IP into a name (203.0.113.7 -> 203-0-113-7.sslip.io).
   hostname = "${replace(local.ip, ".", "-")}.sslip.io"
 }
 

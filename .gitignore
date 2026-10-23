@@ -11,7 +11,8 @@ backend/staticfiles/
 playwright-report/
 test-results/
 club-data/
-.claude/
+.claude/*
+!.claude/settings.json
 .venv
 frontend/public/brand/*
 !frontend/public/brand/README.md

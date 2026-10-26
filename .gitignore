@@ -26,3 +26,8 @@ frontend/public/brand/*
 *.tfplan
 terraform.tfvars
 crash.log
+
+# Output saved from terraform plan/apply/destroy runs
+deploy/terraform*/*-plan.txt
+deploy/terraform*/*-apply.txt
+deploy/terraform*/*-destroy.txt

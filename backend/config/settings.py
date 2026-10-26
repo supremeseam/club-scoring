@@ -4,6 +4,8 @@ from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
 
+from .base_path import normalize_base_path
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 DEV_SECRET = "dev-insecure-secret-key-change-me"
 
@@ -37,6 +39,10 @@ REQUIRE_2FA = env_bool("REQUIRE_2FA", False)
 ALLOWED_HOSTS = [h for h in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver").split(",") if h]
 CSRF_TRUSTED_ORIGINS = [o for o in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if o]
 ADMIN_URL = os.environ.get("ADMIN_URL", "manage-admin/")
+# Serve the app under a sub-path of the club's main domain (e.g. /results). The reverse proxy strips the prefix
+# before the request reaches Django; this makes redirects, admin links and static URLs include it. "" = site root.
+BASE_PATH = normalize_base_path(os.environ.get("BASE_PATH", ""))
+FORCE_SCRIPT_NAME = BASE_PATH or None
 CLUB_NAME = os.environ.get("CLUB_NAME", "Your Yacht Club")
 CLUB_SHORT_NAME = os.environ.get("CLUB_SHORT_NAME", "") or CLUB_NAME
 CLUB_TAGLINE = os.environ.get("CLUB_TAGLINE", "")
@@ -146,7 +152,7 @@ LANGUAGE_CODE = "en-us"
 TIME_ZONE = os.environ.get("TIME_ZONE", "America/New_York")
 USE_I18N = False
 USE_TZ = False  # race times are club-local wall-clock times
-STATIC_URL = "static/"
+STATIC_URL = f"{BASE_PATH}/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

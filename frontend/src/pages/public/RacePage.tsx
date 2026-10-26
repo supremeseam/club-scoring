@@ -4,6 +4,7 @@ import { useGet, type S } from "../../api/client";
 import { Query } from "../../components/bits";
 import { Podium } from "../../components/Podium";
 import { ResultsTable, StatusBadge } from "../../components/tables";
+import { withBase } from "../../lib/base";
 import { fmtDate } from "../../lib/time";
 
 export default function RacePage() {
@@ -22,10 +23,10 @@ export default function RacePage() {
             <Stack gap={4} align="flex-end">
               {r.status === "abandoned" ? <Text c="red" fw={600}>Abandoned</Text> : <StatusBadge final={r.final} />}
               <Group>
-                <Button component="a" href={`/api/races/${id}/podium.pdf`} variant="filled" size="xs">
+                <Button component="a" href={withBase(`/api/races/${id}/podium.pdf`)} variant="filled" size="xs">
                   Print podium sheet
                 </Button>
-                <Button component="a" href={`/api/races/${id}/results.csv`} variant="default" size="xs">
+                <Button component="a" href={withBase(`/api/races/${id}/results.csv`)} variant="default" size="xs">
                   CSV
                 </Button>
               </Group>

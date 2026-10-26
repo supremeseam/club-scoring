@@ -15,6 +15,18 @@ If you'd rather not use Terraform, create the same pieces by hand: S3 bucket (ve
 ## Routine deploy
 `cd /opt/scoring && bash deploy/deploy.sh` (git pull, build both images, restart; migrations run on container start).
 
+## Serve under a sub-path of your main website (optional)
+To show the app at, say, `https://<club domain>/results/` instead of its own address, set `BASE_PATH=/results` in
+`.env` (leading slash, no trailing slash) and rebuild: `bash deploy/deploy.sh`. The setting is baked into the front
+end at build time, so changing it needs a rebuild. Caddy removes the prefix before Django sees the request, and
+Django, the admin, the PDFs and the logo URLs all follow it. Leave it unset to serve at the site root (the default).
+Local test: `BASE_PATH=/results npm run dev`, then open <http://localhost:5173/results/>.
+
+Whatever sits in front (a CDN or the main site's server) must pass `/results/*` through to this server **unchanged**,
+and must forward the real visitor address. The app takes the client IP for login lockouts from the right-most
+`X-Forwarded-For` entry Caddy writes, so behind another proxy every visitor would look like that proxy and lock
+each other out. If you put a CDN in front, add its address ranges as trusted proxies in the Caddyfile first.
+
 ## Add a race committee (RC) account
 1. Log in at `https://<site>/<ADMIN_URL>` as a superuser → Users → add user. Any active account can enter results; don't tick *Staff* or *Superuser* unless they also administer the site.
 2. Set a **temporary** password (15+ characters; the same rules apply as for everyone). Make one with `python -c "import secrets;print(secrets.token_urlsafe(16))"` and send it privately.

@@ -12,6 +12,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { api, type SiteConfig } from "./api/client";
 import { AuthProvider } from "./auth";
+import { BASE } from "./lib/base";
 import { makeTheme } from "./theme";
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } } });
@@ -48,7 +49,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <Themed>
         <Notifications position="top-center" />
         <AuthProvider>
-          <BrowserRouter>
+          <BrowserRouter basename={BASE || undefined}>
             <App />
           </BrowserRouter>
         </AuthProvider>

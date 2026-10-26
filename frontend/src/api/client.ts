@@ -1,9 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
+import { withBase } from "../lib/base";
 import type { components } from "./schema";
 
 export type S = components["schemas"];
 
 export type SiteConfig = {
+  base_path: string;
   club_name: string;
   club_short_name: string;
   tagline: string;
@@ -32,7 +34,7 @@ function cookie(name: string): string | null {
 async function csrfToken(): Promise<string> {
   const have = cookie("csrftoken");
   if (have) return have;
-  const r = await fetch("/api/auth/csrf", { credentials: "same-origin" });
+  const r = await fetch(withBase("/api/auth/csrf"), { credentials: "same-origin" });
   return (await r.json()).csrfToken;
 }
 
@@ -48,7 +50,7 @@ export async function api<T>(path: string, opts: Opts = {}): Promise<T> {
     headers["Content-Type"] = "application/json";
     body = JSON.stringify(opts.body);
   }
-  const res = await fetch(`/api${path}`, { method, headers, body, credentials: "same-origin" });
+  const res = await fetch(withBase(`/api${path}`), { method, headers, body, credentials: "same-origin" });
   if (!res.ok) {
     // Tell the app shell when the login has ended or a temporary password must be replaced.
     if (res.status === 401 && !path.startsWith("/auth/")) window.dispatchEvent(new Event("session-expired"));

@@ -18,7 +18,7 @@ services:
     logging: {driver: json-file, options: {max-size: "10m", max-file: "5"}}   # keeps the auth audit log, bounded
 
   caddy:
-    build: { context: ., dockerfile: deploy/Dockerfile.frontend }
+    build: { context: ., dockerfile: deploy/Dockerfile.frontend, args: { BASE_PATH: "${BASE_PATH:-}" } }
     env_file: [.env]
     ports: ["80:80", "443:443"]
     volumes:

@@ -94,11 +94,16 @@ def site_config(request):
               "violet", "indigo"}
     import re
     hex_ok = re.fullmatch(r"#[0-9a-fA-F]{6}", settings.BRAND_COLOR_HEX or "")
+
+    def under_base(url: str) -> str:      # "/brand/x.png" is relative to the site root the app is served from
+        return settings.BASE_PATH + url if url.startswith("/") and not url.startswith("//") else url
+
     return {"club_name": settings.CLUB_NAME, "club_short_name": settings.CLUB_SHORT_NAME,
-            "app_name": settings.APP_NAME, "burgee_url": settings.CLUB_BURGEE_URL,
+            "base_path": settings.BASE_PATH,
+            "app_name": settings.APP_NAME, "burgee_url": under_base(settings.CLUB_BURGEE_URL),
             "brand_hex": settings.BRAND_COLOR_HEX if hex_ok else "",
             "tagline": settings.CLUB_TAGLINE, "website": settings.CLUB_WEBSITE,
-            "logo_url": settings.CLUB_LOGO_URL,
+            "logo_url": under_base(settings.CLUB_LOGO_URL),
             "brand_color": settings.BRAND_COLOR if settings.BRAND_COLOR in colors else "blue",
             "require_2fa": settings.REQUIRE_2FA,
             "password_min_length": settings.PASSWORD_MIN_LENGTH,

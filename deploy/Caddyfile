@@ -12,6 +12,11 @@
 		-Server
 	}
 
+	# Served under a sub-path of the club's main domain (BASE_PATH=/results, no trailing slash)? Strip it here so
+	# everything below sees root paths. Unset, the placeholder path matches nothing and requests pass untouched.
+	@prefixed path {$BASE_PATH:/__no_base_path__} {$BASE_PATH:/__no_base_path__}/*
+	uri @prefixed strip_prefix {$BASE_PATH:/__no_base_path__}
+
 	# API and the (relocated) Django admin go to gunicorn.
 	@django path /api/* /{$ADMIN_URL:manage-admin/}*
 	handle @django {

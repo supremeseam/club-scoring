@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { useGet, type S } from "../../api/client";
 import { Query } from "../../components/bits";
 import { StandingsTable, StatusBadge } from "../../components/tables";
+import { withBase } from "../../lib/base";
 import { fmtDate } from "../../lib/time";
 
 export default function SeriesPage() {
@@ -19,10 +20,10 @@ export default function SeriesPage() {
               <Group justify="space-between">
                 <Title order={1}>{data.series.name} {data.series.season}</Title>
                 <Group>
-                  <Button component="a" href={`/api/series/${id}/standings.pdf`} variant="default" size="xs">
+                  <Button component="a" href={withBase(`/api/series/${id}/standings.pdf`)} variant="default" size="xs">
                     Standings PDF
                   </Button>
-                  <Button component="a" href={`/api/series/${id}/standings.csv`} variant="default" size="xs">
+                  <Button component="a" href={withBase(`/api/series/${id}/standings.csv`)} variant="default" size="xs">
                     CSV
                   </Button>
                 </Group>

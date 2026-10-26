@@ -4,6 +4,9 @@ WORKDIR /src/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
+# Sub-path to serve under (e.g. /results); empty serves at the site root. Fixed at build time.
+ARG BASE_PATH=""
+ENV BASE_PATH=$BASE_PATH
 RUN npm run build
 
 FROM caddy:2-alpine

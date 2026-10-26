@@ -51,7 +51,8 @@ for its website, can let that pool sign people in instead, so a sailor has one a
 | `COGNITO_POOLS` | `userPoolId:appClientId`, comma separated (e.g. a members pool and an admins pool). Only ID tokens issued to those app clients are accepted |
 | `COGNITO_RC_GROUPS` | Cognito groups whose members are race committee (default `admins`) |
 | `COGNITO_SIGN_IN_URL` | The club website's sign-in page; the Sign in button sends people there |
-| `COGNITO_TOKEN_STORAGE_KEYS` | Session-storage keys, in preference order, where that page keeps `{idToken, ...}` (first unexpired one wins) |
+| `COGNITO_TOKEN_STORAGE_KEYS` | Session-storage keys, in preference order, where that page keeps `{idToken, refreshToken, ...}` (first usable one wins) |
+| `CSP_CONNECT_EXTRA` | Extra address Caddy lets the page call; for token renewal set it to `https://cognito-idp.<region>.amazonaws.com` |
 
 How it works: the browser sends the person's **ID token** as `Authorization: Bearer ...` on every request. The server
 checks its RS256 signature against the pool's published keys (fetched from the pool's own `cognito-idp` address, which is
@@ -68,8 +69,14 @@ Cookies and CSRF play no part, and a leftover Django session never authenticates
   creating or approving password skipper logins all return 404. The Django admin at `ADMIN_URL` keeps its own
   password login as a break-glass route; give it only to the people who need it.
 - **MFA** is whatever the Cognito pool enforces (`REQUIRE_2FA` does not apply).
-- **Sign out** only forgets the tokens in this browser tab; it does not revoke them at Cognito. Tokens expire on their
-  own (Cognito's default is one hour).
+- **Renewal:** Cognito ID tokens are short-lived (15 minutes to an hour). When the stored one has expired, the page calls
+  Cognito's `InitiateAuth` with the refresh token the website's sign-in page saved, stores the new tokens in the same place,
+  and carries on; a 401 triggers one renewal and one retry. It only ever contacts a pool and app client listed in
+  `COGNITO_POOLS` (sent to the browser in `/config`) and never changes the stored session when Cognito refuses. This needs
+  Caddy's security policy to allow the call: set `CSP_CONNECT_EXTRA=https://cognito-idp.<region>.amazonaws.com`. A pool
+  whose sign-in keeps no refresh token (the admins pool signs in through Cognito's hosted page) simply asks the person to
+  sign in again when the token ends.
+- **Sign out** only forgets the tokens in this browser tab; it does not revoke them at Cognito. Tokens expire on their own.
 - **Keys:** a pool's keys are cached for an hour and re-fetched for an unknown key id at most every 10 seconds, so
   garbage tokens can't make the server hammer Cognito. If the keys can't be fetched, requests are refused, not trusted.
 - Requires the `pyjwt[crypto]` package (in `pyproject.toml`).

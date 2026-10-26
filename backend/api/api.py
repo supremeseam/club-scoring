@@ -115,6 +115,8 @@ def site_config(request):
             "base_path": settings.BASE_PATH, "auth_mode": settings.AUTH_MODE,
             "sign_in_url": settings.COGNITO_SIGN_IN_URL if settings.AUTH_MODE == "cognito" else "",
             "token_storage_keys": settings.COGNITO_TOKEN_STORAGE_KEYS if settings.AUTH_MODE == "cognito" else [],
+            "cognito_pools": [{"pool_id": p, "client_id": c} for p, c in settings.COGNITO_POOLS]
+            if settings.AUTH_MODE == "cognito" else [],
             "app_name": settings.APP_NAME, "burgee_url": under_base(settings.CLUB_BURGEE_URL),
             "brand_hex": settings.BRAND_COLOR_HEX if hex_ok else "",
             "tagline": settings.CLUB_TAGLINE, "website": settings.CLUB_WEBSITE,

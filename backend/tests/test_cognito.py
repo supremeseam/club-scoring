@@ -227,8 +227,11 @@ def test_config_tells_the_browser_how_to_sign_in(settings):
     cfg = Client().get("/api/config").json()
     assert cfg["auth_mode"] == "cognito" and cfg["sign_in_url"] == "/members/"
     assert cfg["token_storage_keys"] == ["ayc.admin.session", "ayc.member.session"]
+    assert cfg["cognito_pools"] == [{"pool_id": POOL, "client_id": CLIENT},
+                                    {"pool_id": ADMIN_POOL, "client_id": ADMIN_CLIENT}]
     settings.AUTH_MODE = "password"
-    assert Client().get("/api/config").json()["auth_mode"] == "password"
+    cfg = Client().get("/api/config").json()
+    assert cfg["auth_mode"] == "password" and cfg["cognito_pools"] == []
 
 
 # ---- configuration is validated at start-up -----------------------------------------------------------------------

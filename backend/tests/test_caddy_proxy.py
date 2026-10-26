@@ -5,6 +5,7 @@ request comes from CloudFront, so Caddy may read the visitor's address from Clou
 request that carries the shared secret CloudFront adds (X-Origin-Verify = ORIGIN_VERIFY_SECRET). Anything else a
 client sends must be ignored. Skipped when Docker is not available.
 """
+import http.client
 import shutil
 import socket
 import subprocess
@@ -57,6 +58,7 @@ def stack(tmp_path_factory):
         ':8000 {\n\trespond "xff={http.request.header.X-Forwarded-For};cf={http.request.header.CloudFront-Viewer-Address};'
         'ov={http.request.header.X-Origin-Verify};path={http.request.uri.path}"\n}\n', encoding="utf-8")
     (work / "srv").mkdir()
+    (work / "srv" / "index.html").write_text("SPA-INDEX", encoding="utf-8")
     (work / "static").mkdir()
     _docker("network", "create", net)
     _docker("run", "-d", "--name", f"app-{tag}", "--network", net, "--network-alias", "app",
@@ -154,3 +156,58 @@ def test_the_viewer_address_works_together_with_a_base_path(stack):
     port = stack(ORIGIN_VERIFY_SECRET=SECRET, BASE_PATH="/results")
     got = ask(port, "/results/api/ping", CloudFront_Viewer_Address="198.51.100.4:2", X_Origin_Verify=SECRET)
     assert got["xff"] == "198.51.100.4" and got["path"] == "/api/ping"
+
+
+# ---- old direct links -----------------------------------------------------------------------------------------------
+# After the app moves under /results on the club's main site, links and printed QR codes that point at the server's own
+# address (/races/12 ...) must forward to the new address instead of breaking. Only when both BASE_PATH and
+# LEGACY_REDIRECT_BASE are set; the API, static files, brand files and the Django admin are never redirected.
+NEW_HOME = "https://site.example/results"
+
+
+def raw(port: int, path: str):
+    """One request with no redirect following: (status, Location header, body)."""
+    conn = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+    conn.request("GET", path)
+    r = conn.getresponse()
+    out = (r.status, r.getheader("Location"), r.read().decode())
+    conn.close()
+    return out
+
+
+@pytest.fixture(scope="module")
+def moved(stack):
+    return stack(BASE_PATH="/results", LEGACY_REDIRECT_BASE=NEW_HOME)
+
+
+@pytest.mark.parametrize("old, new", [
+    ("/", f"{NEW_HOME}/"),
+    ("/races/12", f"{NEW_HOME}/races/12"),
+    ("/series/3?tab=standings", f"{NEW_HOME}/series/3?tab=standings"),
+    ("/boats/7", f"{NEW_HOME}/boats/7"),
+    ("/crew", f"{NEW_HOME}/crew"),
+    ("/login", f"{NEW_HOME}/login"),
+])
+def test_old_direct_links_forward_to_the_new_address(moved, old, new):
+    status, location, _ = raw(moved, old)
+    assert status == 308 and location == new
+
+
+@pytest.mark.parametrize("path", ["/results/", "/results", "/results/races/12", "/results/assets/app.js"])
+def test_links_already_under_the_new_path_are_not_redirected(moved, path):
+    status, location, _ = raw(moved, path)
+    assert status == 200 and location is None
+
+
+def test_the_api_the_files_and_the_admin_are_never_redirected(moved):
+    assert raw(moved, "/api/ping")[0] == 200                      # reaches the app
+    assert raw(moved, "/static/admin.css")[0] == 404              # the static handler, not a redirect
+    assert raw(moved, "/brand/logo.png")[0] != 308
+    assert raw(moved, "/manage-admin/")[0] == 200                 # reaches the app (the Django admin)
+
+
+def test_nothing_is_redirected_without_a_base_path_or_without_a_target(stack):
+    no_target = stack(BASE_PATH="/results")
+    no_base = stack(LEGACY_REDIRECT_BASE=NEW_HOME)
+    for port in (no_target, no_base):
+        assert raw(port, "/races/12")[0] == 200 and raw(port, "/races/12")[1] is None

@@ -22,6 +22,11 @@ end at build time, so changing it needs a rebuild. Caddy removes the prefix befo
 Django, the admin, the PDFs and the logo URLs all follow it. Leave it unset to serve at the site root (the default).
 Local test: `BASE_PATH=/results npm run dev`, then open <http://localhost:5173/results/>.
 
+**Old links.** Once `BASE_PATH` is set, the server's own address (`https://<server>/races/12`) no longer shows the app, which
+breaks bookmarks and QR codes on podium sheets printed earlier. Set `LEGACY_REDIRECT_BASE=https://<club domain>/results` too
+and Caddy forwards such links (with a 308) to the new address. The API, static and brand files and the Django admin stay
+reachable on the server's own address. Also set `PUBLIC_URL` to the same new address so newly printed QR codes use it.
+
 **Behind CloudFront.** The route must pass `/results/*` through to this server unchanged, with these headers: the
 visitor's `Authorization`, `Origin`, `Referer`, `X-CSRFToken`, cookies, and `CloudFront-Viewer-Address`; and CloudFront
 must reach the server by its own HTTPS name (not forward the visitor's `Host`). The app takes the client IP for login

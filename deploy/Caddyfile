@@ -29,6 +29,15 @@
 	@prefixed path {$BASE_PATH:/__no_base_path__} {$BASE_PATH:/__no_base_path__}/*
 	uri @prefixed strip_prefix {$BASE_PATH:/__no_base_path__}
 
+	# Links and printed QR codes made before the app moved under BASE_PATH point at this server's own address. When
+	# LEGACY_REDIRECT_BASE (the new full address, e.g. https://example.org/results) is set, forward them there. Never the
+	# API, static or brand files or the Django admin, and never anything already under BASE_PATH.
+	@legacy {
+		expression `{env.BASE_PATH} != "" && {env.LEGACY_REDIRECT_BASE} != ""`
+		not path {$BASE_PATH:/__no_base_path__} {$BASE_PATH:/__no_base_path__}/* /api/* /static/* /brand/* /{$ADMIN_URL:manage-admin/}*
+	}
+	redir @legacy {$LEGACY_REDIRECT_BASE:/__no_redirect__}{uri} 308
+
 	# API and the (relocated) Django admin go to gunicorn.
 	@django path /api/* /{$ADMIN_URL:manage-admin/}*
 	handle @django {

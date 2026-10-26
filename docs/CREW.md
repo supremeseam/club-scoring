@@ -10,10 +10,11 @@ payments.
 | **Nobody (no login)** | n/a | See the public board (`/crew`); sign up to crew; check or withdraw their own request with the private code shown after signing up (kept in their browser). |
 | **Crew account** (optional) | The sailor, at `/crew/join` | Everything above, plus see and withdraw their own sign-ups from any device. |
 | **Skipper** | The race committee | For their linked boat(s) only: post/close openings (for any race or one specific race), edit crew notes and contact details, accept or decline requests. |
-| **Race committee** | A site administrator | Everything as before, plus *Crew board* in the menu: approve skipper requests, create/link skipper logins, delete spam. |
+| **Race committee** | A site administrator | Everything as before, plus *Crew board* in the menu: approve skipper requests, create/link skipper logins, delete spam. A committee member who also sails can be linked to their own boat(s) and then manages that boat's crew exactly like a skipper (see below). |
 
-Each login has a role (`rc`, `skipper`, `crew`). Only `rc` reaches `/api/manage/*`; skipper and crew accounts are
-refused there with 403, and skippers can only read or change rows tied to boats the committee linked to them.
+Each login has a role (`rc`, `skipper`, `crew`) and, separately, a list of linked boats. Only `rc` reaches
+`/api/manage/*`; skipper and crew accounts are refused there with 403. A `skipper` or `rc` account can read or change
+crew rows only for the boats linked to it; a `crew` account can never be linked to a boat.
 Accounts made in the Django admin are `rc`; accounts made through the site are never `rc`.
 
 ## Setting up a skipper
@@ -24,6 +25,11 @@ Accounts made in the Django admin are `rc`; accounts made through the site are n
 3. Give the skipper the temporary password. At first sign-in they must choose their own.
 4. To reset a skipper's password or disable the login, use the site admin like any other account. Linking a
    second boat, or unlinking one, is under *Skipper logins*.
+
+## Race committee who sail
+Under *Crew board, Skipper logins* the committee lists skipper accounts and committee accounts together. Link a boat
+to a committee account and that person gets **My boat's crew** in the menu (and the red request count), limited to
+their own boats. Their committee access is unchanged, and they can still see every sign-up under *Sign-ups* as before.
 
 ## Privacy
 

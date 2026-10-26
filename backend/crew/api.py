@@ -2,7 +2,7 @@
 
   public_router   no login (CSRF still checked on writes); every write is rate limited and has a honeypot
   crew_router     a signed-in crew account: only its own sign-ups
-  skipper_router  a signed-in skipper account: only the boats the race committee linked to it, crew info only
+  skipper_router  a signed-in skipper or race committee account: only the boats the committee linked to it, crew info only
   manage_router   race committee moderation (mounted under /api/manage)
 """
 import hashlib
@@ -25,7 +25,7 @@ from ninja.errors import HttpError
 
 from accounts.audit import log_event
 from accounts.ip import client_ip
-from accounts.models import AccountProfile
+from accounts.models import AccountProfile, account_role
 from boats.models import Boat
 from racing.models import Race, Series
 
@@ -491,13 +491,18 @@ def _make_skipper(username: str, password: str, boat_ids: list[int], name: str =
 
 
 def _skipper_out(u: User) -> dict:
-    return {"user_id": u.id, "username": u.username, "name": u.first_name, "email": u.email,
+    return {"user_id": u.id, "username": u.username, "name": u.first_name, "email": u.email, "role": account_role(u),
             "active": u.is_active, "boats": [{"id": m.boat_id, "name": m.boat.name} for m in u.managed_boats.all()]}
+
+
+def _boat_managers():
+    """Accounts that may be linked to boats: skippers and race committee (an account with no profile is rc), never crew."""
+    return User.objects.filter(Q(auth_profile__role__in=("skipper", "rc")) | Q(auth_profile__isnull=True))
 
 
 @manage_router.get("/crew/skippers")
 def rc_skippers(request):
-    qs = User.objects.filter(auth_profile__role="skipper").prefetch_related("managed_boats__boat").order_by("username")
+    qs = _boat_managers().prefetch_related("managed_boats__boat").order_by("username")
     return [_skipper_out(u) for u in qs]
 
 
@@ -510,14 +515,14 @@ def rc_create_skipper(request, data: SkipperAccountIn):
 
 @manage_router.post("/crew/skippers/link")
 def rc_link(request, data: LinkIn):
-    user = get_object_or_404(User, pk=data.user_id, auth_profile__role="skipper")
+    user = get_object_or_404(_boat_managers(), pk=data.user_id)
     BoatManager.objects.get_or_create(user=user, boat=get_object_or_404(Boat, pk=data.boat_id))
     return _skipper_out(user)
 
 
 @manage_router.post("/crew/skippers/unlink")
 def rc_unlink(request, data: LinkIn):
-    user = get_object_or_404(User, pk=data.user_id, auth_profile__role="skipper")
+    user = get_object_or_404(_boat_managers(), pk=data.user_id)
     BoatManager.objects.filter(user=user, boat_id=data.boat_id).delete()
     return _skipper_out(user)
 

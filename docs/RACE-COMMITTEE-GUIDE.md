@@ -55,7 +55,8 @@ not scored and does not appear on the public results. Members can be set to race
 ## Crew board
 **Crew board** in the menu is where you approve skippers who ask for a login (they pick their boat; you set a
 temporary password) and clear out spam sign-ups. Skippers can only edit their own boat's crew openings. They
-cannot change results, ratings or fees.
+cannot change results, ratings or fees. If you sail yourself, link your own boat to your committee login under
+*Skipper logins*; **My boat's crew** then appears in your menu for that boat only.
 
 ## If something looks wrong
 - **Results did not update:** check the race status is *sailed* and each fleet has a start saved.

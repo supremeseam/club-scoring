@@ -1404,6 +1404,11 @@ export interface components {
              */
             role: string;
             /**
+             * Manages Boats
+             * @default false
+             */
+            manages_boats: boolean;
+            /**
              * Unseen Requests
              * @default 0
              */

@@ -105,7 +105,7 @@ export default function CrewAdmin() {
                   <Table.Tbody>
                     {rows.map((u) => (
                       <Table.Tr key={u.user_id}>
-                        <Table.Td>{u.username}<Text size="xs" c="dimmed">{u.name} {u.email}</Text>{!u.active && <Badge color="gray">disabled</Badge>}</Table.Td>
+                        <Table.Td>{u.username}<Text size="xs" c="dimmed">{u.name} {u.email}</Text>{u.role === "rc" && <Badge color="indigo" variant="light">committee</Badge>}{!u.active && <Badge color="gray">disabled</Badge>}</Table.Td>
                         <Table.Td>
                           <Group gap={4}>
                             {u.boats.map((b) => (
@@ -126,7 +126,7 @@ export default function CrewAdmin() {
               )}
             </Query>
             <Card withBorder><Title order={5} mb="xs">New skipper login</Title><CreateSkipper boats={boats} onDone={() => void reload()} /></Card>
-            <Text size="xs" c="dimmed">To reset a skipper's password or disable the login, use the site admin, as for any account.</Text>
+            <Text size="xs" c="dimmed">Race committee accounts are listed too: link a boat to one and that person manages its crew under "My boat's crew", still with their committee access. To reset a password or disable a login, use the site admin, as for any account.</Text>
           </Stack>
         </Tabs.Panel>
         <Tabs.Panel value="signups" pt="md">

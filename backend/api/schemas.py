@@ -154,6 +154,7 @@ class Me(Schema):
     is_admin: bool
     must_change_password: bool = False
     role: str = "rc"
+    manages_boats: bool = False
     unseen_requests: int = 0
 
 

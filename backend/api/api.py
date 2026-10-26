@@ -57,7 +57,7 @@ class RoleAuth(SessionAuth):
 
 
 editor_auth = RoleAuth(("rc",))                       # race committee
-skipper_auth = RoleAuth(("skipper",))
+skipper_auth = RoleAuth(("skipper", "rc"))            # rc: only the boats the committee linked to that account
 crew_auth = RoleAuth(("crew",))
 account_auth = RoleAuth(("rc", "skipper", "crew"), allow_must_change=True)    # /auth/me, change-password, logout
 api = NinjaAPI(title="Club Scoring API", version="1.0", auth=None, docs_url="/docs")
@@ -79,10 +79,12 @@ def _check_csrf(request):
 
 def _me(user) -> dict:
     from crew.api import unseen_requests
+    from crew.models import BoatManager
     role = account_role(user)
+    manages_boats = role != "crew" and BoatManager.objects.filter(user=user).exists()
     return {"username": user.get_username(), "is_admin": user.is_superuser and role == "rc", "role": role,
-            "must_change_password": must_change_password(user),
-            "unseen_requests": unseen_requests(user) if role == "skipper" else 0}
+            "must_change_password": must_change_password(user), "manages_boats": manages_boats,
+            "unseen_requests": unseen_requests(user) if manages_boats else 0}
 
 
 @api.get("/config", tags=["public"])

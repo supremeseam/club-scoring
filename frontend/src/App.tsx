@@ -39,7 +39,8 @@ export default function App() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const { pathname } = useLocation();
-  const links = user?.role === "skipper" ? SKIPPER_LINKS : user?.role === "crew" ? CREW_LINKS : LINKS;
+  const links = user?.role === "skipper" ? SKIPPER_LINKS : user?.role === "crew" ? CREW_LINKS
+    : user?.manages_boats ? [...LINKS, ...SKIPPER_LINKS] : LINKS;
   const logout = async () => {
     await api("/auth/logout", { method: "POST" });
     await qc.invalidateQueries({ queryKey: ["me"] });
@@ -82,7 +83,7 @@ export default function App() {
                   </Menu.Dropdown>
                 </Menu>
                 <Text size="sm" visibleFrom="sm" c="dimmed">{user.username}</Text>
-                {user.role === "skipper" && user.unseen_requests > 0 && (
+                {user.manages_boats && user.unseen_requests > 0 && (
                   <Badge color="red" variant="filled" component={Link} to="/skipper" title="New crew requests">{user.unseen_requests}</Badge>
                 )}
                 <Button component={Link} to="/change-password" size="compact-sm" variant="subtle" visibleFrom="sm">Change password</Button>
@@ -112,7 +113,7 @@ export default function App() {
             <Route path="/crew" element={<CrewBoard />} />
             <Route path="/crew/join" element={<CrewJoin />} />
             <Route path="/crew/my" element={<RequireEditor role="crew"><MySignups /></RequireEditor>} />
-            <Route path="/skipper" element={<RequireEditor role="skipper"><SkipperHome /></RequireEditor>} />
+            <Route path="/skipper" element={<RequireEditor role={["skipper", "rc"]}><SkipperHome /></RequireEditor>} />
             <Route path="/manage/crew" element={<RequireEditor><CrewAdmin /></RequireEditor>} />
             <Route path="*" element={<Text>Page not found.</Text>} />
           </Routes>

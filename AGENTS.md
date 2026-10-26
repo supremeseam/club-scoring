@@ -41,7 +41,8 @@ Do not edit or work around either to make a task easier. If a guard blocks you, 
 
 ## Security rules that must keep holding
 - Three login roles: race committee (`rc`), `skipper`, `crew`. Only `rc` may reach `/api/manage/*`. Skippers and
-  crew never touch results, ratings, fees or payments. Every new endpoint declares its role, and gets a test that
+  crew never touch results, ratings, fees or payments. Boat links (`BoatManager`) are separate from the role: `skipper`
+  and `rc` accounts may be linked to boats and manage crew for those boats only; `crew` never. Every new endpoint declares its role, and gets a test that
   the other roles receive 403 and anonymous callers 401.
 - Public endpoints expose no contact details, payment data or account information. A test enforces it; keep it
   passing and extend it for new fields.

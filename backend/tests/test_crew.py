@@ -71,10 +71,53 @@ def test_skipper_and_crew_cannot_touch_race_committee_endpoints(world):
         assert call(c, "post", "/api/manage/fleets", {"name": "x"}).status_code == 403
 
 
-def test_race_committee_cannot_use_skipper_endpoints_and_can_use_manage(world):
+def test_race_committee_without_boats_sees_an_empty_skipper_screen_and_can_use_manage(world):
     c = sign_in("rc")
-    assert call(c, "get", "/api/crew/skipper/overview").status_code == 403
+    r = call(c, "get", "/api/crew/skipper/overview")
+    assert r.status_code == 200 and r.json()["boats"] == []
     assert call(c, "get", "/api/manage/crew/signups").status_code == 200
+
+
+def test_race_committee_linked_to_a_boat_manages_that_boats_crew_only(world):
+    rc_boat = Boat.objects.create(name="Cygnus", sail_number="56", skipper="Rae Committee")
+    make_user("racer", "rc", [rc_boat])
+    c = sign_in("racer")
+    assert [b["name"] for b in call(c, "get", "/api/crew/skipper/overview").json()["boats"]] == ["Cygnus"]
+    posting = call(c, "post", f"/api/crew/skipper/boats/{rc_boat.id}/postings", {"role": "Bow", "spots": 1})
+    assert posting.status_code == 200, posting.content
+    # someone else's boat stays off limits, exactly as for a skipper
+    assert call(c, "post", f"/api/crew/skipper/boats/{world['mine'].id}/postings", {"role": "Bow", "spots": 1}).status_code == 404
+    assert call(c, "put", f"/api/crew/skipper/boats/{world['mine'].id}/info",
+                {"notes": "x", "contact_name": "", "contact_email": "", "contact_phone": "",
+                 "contact_preference": "app"}).status_code == 404
+    # and the race committee powers are unchanged
+    assert call(c, "get", "/api/manage/crew/signups").status_code == 200
+
+
+def test_race_committee_answers_requests_for_its_own_boat_only(world):
+    rc_boat = Boat.objects.create(name="Cygnus", sail_number="56", skipper="Rae Committee")
+    make_user("racer", "rc", [rc_boat])
+    mine = signup(client(), boat_id=rc_boat.id)
+    theirs = signup(client(), boat_id=world["mine"].id, email="other@example.org")
+    assert mine.status_code == 200 and theirs.status_code == 200
+    c = sign_in("racer")
+    rows = call(c, "get", "/api/crew/skipper/signups").json()
+    assert {r["boat"] for r in rows} == {"Cygnus"}
+    pk = rows[0]["id"]
+    assert call(c, "post", f"/api/crew/skipper/signups/{pk}/respond", {"status": "accepted"}).status_code == 200
+    other_pk = CrewSignup.objects.get(boat=world["mine"]).pk
+    assert call(c, "post", f"/api/crew/skipper/signups/{other_pk}/respond", {"status": "accepted"}).status_code == 404
+
+
+def test_me_reports_boats_and_badge_for_race_committee(world):
+    rc_boat = Boat.objects.create(name="Cygnus", sail_number="56", skipper="Rae Committee")
+    make_user("racer", "rc", [rc_boat])
+    assert signup(client(), boat_id=rc_boat.id).status_code == 200
+    me = call(sign_in("racer"), "get", "/api/auth/me").json()
+    assert me["role"] == "rc" and me["manages_boats"] is True and me["unseen_requests"] == 1
+    plain = call(sign_in("rc"), "get", "/api/auth/me").json()
+    assert plain["manages_boats"] is False and plain["unseen_requests"] == 0
+    assert call(sign_in("sam"), "get", "/api/auth/me").json()["manages_boats"] is True
 
 
 def test_crew_cannot_use_skipper_endpoints(world):
@@ -252,6 +295,28 @@ def test_rc_creates_skipper_with_temporary_password_and_boat_link(world):
     assert list(BoatManager.objects.filter(user=u).values_list("boat_id", flat=True)) == [world["other"].id]
     weak = call(c, "post", "/api/manage/crew/skippers", {"username": "w", "password": "short", "boat_ids": [1]})
     assert weak.status_code == 422
+
+
+def test_rc_links_boats_to_a_race_committee_account_but_never_to_crew(world):
+    make_user("cathy", "crew")
+    peer = make_user("peer", "rc")
+    c = sign_in("rc")
+    r = call(c, "post", "/api/manage/crew/skippers/link", {"user_id": peer.id, "boat_id": world["other"].id})
+    assert r.status_code == 200, r.content
+    assert r.json()["role"] == "rc" and [b["id"] for b in r.json()["boats"]] == [world["other"].id]
+    listed = {a["username"]: a["role"] for a in call(c, "get", "/api/manage/crew/skippers").json()}
+    assert listed["peer"] == "rc" and listed["sam"] == "skipper" and "cathy" not in listed
+    crew_id = User.objects.get(username="cathy").id
+    assert call(c, "post", "/api/manage/crew/skippers/link",
+                {"user_id": crew_id, "boat_id": world["other"].id}).status_code == 404
+    gone = call(c, "post", "/api/manage/crew/skippers/unlink", {"user_id": peer.id, "boat_id": world["other"].id})
+    assert gone.status_code == 200 and gone.json()["boats"] == []
+
+
+def test_boat_with_only_a_race_committee_manager_can_be_signed_up_to(world):
+    rc_boat = Boat.objects.create(name="Cygnus", sail_number="56", skipper="Rae Committee")
+    make_user("racer", "rc", [rc_boat])
+    assert signup(client(), boat_id=rc_boat.id).status_code == 200
 
 
 def test_skipper_request_then_approval(world):

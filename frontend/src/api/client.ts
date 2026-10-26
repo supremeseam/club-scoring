@@ -1,11 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { withBase } from "../lib/base";
+import { pickIdToken } from "../lib/tokens";
 import type { components } from "./schema";
 
 export type S = components["schemas"];
 
 export type SiteConfig = {
   base_path: string;
+  auth_mode: "password" | "cognito";
+  sign_in_url: string;
+  token_storage_keys: string[];
   club_name: string;
   club_short_name: string;
   tagline: string;
@@ -40,9 +44,23 @@ async function csrfToken(): Promise<string> {
 
 type Opts = { method?: string; body?: unknown; form?: FormData };
 
+let signInConfig: Promise<{ mode: string; keys: string[] }> | null = null;
+
+/** How people sign in (from /config, fetched once). Cognito mode sends the website's ID token with every request. */
+export function authSettings() {
+  signInConfig ??= fetch(withBase("/api/config"), { credentials: "same-origin" })
+    .then((r) => r.json())
+    .then((c: SiteConfig) => ({ mode: c.auth_mode, keys: c.token_storage_keys ?? [] }))
+    .catch(() => ({ mode: "password", keys: [] }));
+  return signInConfig;
+}
+
 export async function api<T>(path: string, opts: Opts = {}): Promise<T> {
   const method = opts.method ?? "GET";
   const headers: Record<string, string> = {};
+  const auth = await authSettings();
+  const idToken = auth.mode === "cognito" ? pickIdToken(window.sessionStorage, auth.keys) : null;
+  if (idToken) headers.Authorization = `Bearer ${idToken}`;
   if (method !== "GET") headers["X-CSRFToken"] = await csrfToken();
   let body: BodyInit | undefined;
   if (opts.form) body = opts.form;

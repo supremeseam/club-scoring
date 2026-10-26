@@ -18,6 +18,7 @@ from ninja import NinjaAPI
 from ninja.errors import HttpError
 from ninja.security import SessionAuth
 
+from accounts import cognito
 from accounts.audit import log_event
 from accounts.models import AccountProfile, account_role, must_change_password
 from accounts.security import account_locked
@@ -43,11 +44,22 @@ class RoleAuth(SessionAuth):
         self.roles = roles
         self.allow_must_change = allow_must_change
 
+    def __call__(self, request):
+        if settings.AUTH_MODE != "cognito":
+            return super().__call__(request)
+        # Cognito mode: the ID token in the Authorization header is the only credential. No cookie or CSRF is
+        # involved, so a stale Django session can never authenticate a request.
+        user = cognito.user_from_request(request)
+        if user is None:
+            return None
+        request.user = user
+        return self.authenticate(request, None)
+
     def authenticate(self, request, key):
         user = request.user
         if not user.is_authenticated or not user.is_active:
             return None
-        if settings.REQUIRE_2FA and not user.is_verified():
+        if settings.REQUIRE_2FA and settings.AUTH_MODE != "cognito" and not user.is_verified():
             return None
         if account_role(user) not in self.roles:
             raise HttpError(403, "This account cannot do that")
@@ -82,7 +94,8 @@ def _me(user) -> dict:
     from crew.models import BoatManager
     role = account_role(user)
     manages_boats = role != "crew" and BoatManager.objects.filter(user=user).exists()
-    return {"username": user.get_username(), "is_admin": user.is_superuser and role == "rc", "role": role,
+    return {"username": user.get_username(), "display_name": user.first_name or user.email or user.get_username(),
+            "is_admin": user.is_superuser and role == "rc", "role": role,
             "must_change_password": must_change_password(user), "manages_boats": manages_boats,
             "unseen_requests": unseen_requests(user) if manages_boats else 0}
 
@@ -99,7 +112,9 @@ def site_config(request):
         return settings.BASE_PATH + url if url.startswith("/") and not url.startswith("//") else url
 
     return {"club_name": settings.CLUB_NAME, "club_short_name": settings.CLUB_SHORT_NAME,
-            "base_path": settings.BASE_PATH,
+            "base_path": settings.BASE_PATH, "auth_mode": settings.AUTH_MODE,
+            "sign_in_url": settings.COGNITO_SIGN_IN_URL if settings.AUTH_MODE == "cognito" else "",
+            "token_storage_keys": settings.COGNITO_TOKEN_STORAGE_KEYS if settings.AUTH_MODE == "cognito" else [],
             "app_name": settings.APP_NAME, "burgee_url": under_base(settings.CLUB_BURGEE_URL),
             "brand_hex": settings.BRAND_COLOR_HEX if hex_ok else "",
             "tagline": settings.CLUB_TAGLINE, "website": settings.CLUB_WEBSITE,
@@ -117,6 +132,7 @@ def csrf(request):
 
 @api.post("/auth/login", response=s.Me, tags=["auth"])
 def login_view(request, data: s.LoginIn):
+    cognito.require_password_mode()
     _check_csrf(request)
     username = data.username.strip()
     if account_locked(username):                        # per-account backstop across all IP addresses
@@ -151,6 +167,7 @@ def me(request):
 @api.post("/auth/change-password", auth=account_auth, tags=["auth"])
 def change_password(request, data: s.ChangePasswordIn):
     """Change your own password (also how a temporary password is replaced). Needs the current password."""
+    cognito.require_password_mode()
     user = request.user
     if not user.check_password(data.current_password):
         # counts toward the lockouts, so a hijacked session can't be used to guess the current password

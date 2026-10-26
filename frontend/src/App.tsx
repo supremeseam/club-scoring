@@ -1,7 +1,8 @@
 import { Anchor, AppShell, Badge, Button, Group, Menu, Text } from "@mantine/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, Route, Routes, useLocation, useNavigate } from "react-router-dom";
-import { api } from "./api/client";
+import { api, authSettings } from "./api/client";
+import { clearTokens } from "./lib/tokens";
 import { RequireEditor, RequireSignedIn, useAuth } from "./auth";
 import { Burgee, SiteFooter, useSite } from "./components/Brand";
 import Boats from "./pages/manage/Boats";
@@ -41,8 +42,11 @@ export default function App() {
   const { pathname } = useLocation();
   const links = user?.role === "skipper" ? SKIPPER_LINKS : user?.role === "crew" ? CREW_LINKS
     : user?.manages_boats ? [...LINKS, ...SKIPPER_LINKS] : LINKS;
+  const cognito = site?.auth_mode === "cognito";
   const logout = async () => {
     await api("/auth/logout", { method: "POST" });
+    // Cognito mode: signing out means forgetting the tokens the club website's sign-in page keeps in this tab
+    if (cognito) clearTokens(window.sessionStorage, (await authSettings()).keys);
     await qc.invalidateQueries({ queryKey: ["me"] });
     nav("/");
   };
@@ -78,15 +82,15 @@ export default function App() {
                     {links.map(([to, label]) => (
                       <Menu.Item key={to} component={Link} to={to}>{label}</Menu.Item>
                     ))}
-                    <Menu.Divider />
-                    <Menu.Item component={Link} to="/change-password">Change password</Menu.Item>
+                    {!cognito && <Menu.Divider />}
+                    {!cognito && <Menu.Item component={Link} to="/change-password">Change password</Menu.Item>}
                   </Menu.Dropdown>
                 </Menu>
-                <Text size="sm" visibleFrom="sm" c="dimmed">{user.username}</Text>
+                <Text size="sm" visibleFrom="sm" c="dimmed">{user.display_name || user.username}</Text>
                 {user.manages_boats && user.unseen_requests > 0 && (
                   <Badge color="red" variant="filled" component={Link} to="/skipper" title="New crew requests">{user.unseen_requests}</Badge>
                 )}
-                <Button component={Link} to="/change-password" size="compact-sm" variant="subtle" visibleFrom="sm">Change password</Button>
+                {!cognito && <Button component={Link} to="/change-password" size="compact-sm" variant="subtle" visibleFrom="sm">Change password</Button>}
                 <Button size="compact-sm" variant="default" onClick={logout}>Log out</Button>
               </>
             ) : (

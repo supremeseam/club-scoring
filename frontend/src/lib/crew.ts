@@ -19,7 +19,7 @@ export type SkipperOverview = {
   unseen: number;
   races: { id: number; label: string }[];
 };
-export type SkipperAccount = { user_id: number; username: string; name: string; email: string; role: string; active: boolean; boats: { id: number; name: string }[] };
+export type SkipperAccount = { user_id: number; username: string; name: string; email: string; role: string; external: boolean; active: boolean; boats: { id: number; name: string }[] };
 export type SkipperRequestRow = { id: number; name: string; email: string; boat_id: number | null; boat: string; message: string; created: string };
 
 export const STATUS_COLOR: Record<string, string> = { pending: "yellow", accepted: "green", declined: "gray", withdrawn: "gray" };

@@ -1391,6 +1391,11 @@ export interface components {
         Me: {
             /** Username */
             username: string;
+            /**
+             * Display Name
+             * @default
+             */
+            display_name: string;
             /** Is Admin */
             is_admin: boolean;
             /**

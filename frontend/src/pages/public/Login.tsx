@@ -32,6 +32,24 @@ export default function Login() {
       setBusy(false);
     }
   };
+  if (cfg?.auth_mode === "cognito") {
+    // People sign in on the club website; this app only reads the token that page keeps for the tab.
+    return (
+      <Center pt="xl">
+        <Card w="100%" maw={400} p="xl" shadow="md" withBorder>
+          <Stack align="center">
+            <Burgee height={56} />
+            <Title order={3}>Sign in</Title>
+            <Text size="sm" c="dimmed" ta="center">You sign in once, on the club website. Come back here afterwards.</Text>
+            {expired && <Alert color="blue">Your sign-in ended. Please sign in again.</Alert>}
+            {cfg.sign_in_url
+              ? <Button component="a" href={cfg.sign_in_url} fullWidth size="md">Sign in on the club website</Button>
+              : <Alert color="red">The club has not set a sign-in page yet (COGNITO_SIGN_IN_URL).</Alert>}
+          </Stack>
+        </Card>
+      </Center>
+    );
+  }
   return (
     <Center pt="xl">
       <Card w="100%" maw={400} p="xl" shadow="md" withBorder>

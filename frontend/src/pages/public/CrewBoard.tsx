@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { api, useGet } from "../../api/client";
 import { useAuth } from "../../auth";
+import { useSite } from "../../components/Brand";
 import { Query, toastError, toastOk } from "../../components/bits";
 import { saveToken, STATUS_COLOR, type Board, type Options, type Posting, type SignupStatus } from "../../lib/crew";
 
@@ -146,6 +147,7 @@ function PostingLine({ p, onJoin }: { p: Posting; onJoin: () => void }) {
 export default function CrewBoard() {
   const board = useGet<Board>("/crew/board");
   const { user } = useAuth();
+  const cognito = useSite().data?.auth_mode === "cognito";
   const [target, setTarget] = useState<Target | null>(null);
   return (
     <Stack>
@@ -157,7 +159,8 @@ export default function CrewBoard() {
         <Group gap="xs">
           <Button onClick={() => setTarget({ label: "any boat or race" })}>Offer to crew</Button>
           {user?.role === "crew" && <Button component={Link} to="/crew/my" variant="light">My sign-ups</Button>}
-          {!user && <Button component={Link} to="/crew/join" variant="default">Skipper or crew account</Button>}
+          {!user && !cognito && <Button component={Link} to="/crew/join" variant="default">Skipper or crew account</Button>}
+          {!user && cognito && <Button component={Link} to="/login" variant="default">Sign in</Button>}
         </Group>
       </Group>
       {user?.role === "crew" && <MyRequests />}

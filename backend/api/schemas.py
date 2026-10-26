@@ -151,6 +151,7 @@ class ChangePasswordIn(Schema):
 
 class Me(Schema):
     username: str
+    display_name: str = ""
     is_admin: bool
     must_change_password: bool = False
     role: str = "rc"

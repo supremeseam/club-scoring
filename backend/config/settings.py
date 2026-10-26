@@ -4,6 +4,7 @@ from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
 
+from .auth_config import parse_auth_mode, parse_cognito_pools, split_list
 from .base_path import normalize_base_path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -43,6 +44,20 @@ ADMIN_URL = os.environ.get("ADMIN_URL", "manage-admin/")
 # before the request reaches Django; this makes redirects, admin links and static URLs include it. "" = site root.
 BASE_PATH = normalize_base_path(os.environ.get("BASE_PATH", ""))
 FORCE_SCRIPT_NAME = BASE_PATH or None
+
+# How people sign in. "password" (default): accounts and passwords live in this app. "cognito": the club's Amazon
+# Cognito user pool(s) sign people in and every API request carries their ID token; this app keeps no passwords.
+AUTH_MODE = parse_auth_mode(os.environ.get("AUTH_MODE", ""))
+# "userPoolId:appClientId" pairs, comma separated; only ID tokens from these app clients are accepted.
+COGNITO_POOLS = parse_cognito_pools(os.environ.get("COGNITO_POOLS", ""))
+if AUTH_MODE == "cognito" and not COGNITO_POOLS:
+    raise ImproperlyConfigured("AUTH_MODE=cognito needs COGNITO_POOLS (userPoolId:appClientId)")
+# Cognito groups whose members are race committee. Everyone else signs in as crew, or skipper once boats are linked.
+COGNITO_RC_GROUPS = split_list(os.environ.get("COGNITO_RC_GROUPS", "admins"))
+# Where the browser sends a signed-out visitor (the club website's sign-in page), and the browser storage keys
+# (JSON {idToken, expiresAt}) under which that page keeps the sign-in tokens.
+COGNITO_SIGN_IN_URL = os.environ.get("COGNITO_SIGN_IN_URL", "")
+COGNITO_TOKEN_STORAGE_KEYS = split_list(os.environ.get("COGNITO_TOKEN_STORAGE_KEYS", ""))
 CLUB_NAME = os.environ.get("CLUB_NAME", "Your Yacht Club")
 CLUB_SHORT_NAME = os.environ.get("CLUB_SHORT_NAME", "") or CLUB_NAME
 CLUB_TAGLINE = os.environ.get("CLUB_TAGLINE", "")

@@ -44,6 +44,9 @@ Do not edit or work around either to make a task easier. If a guard blocks you, 
   crew never touch results, ratings, fees or payments. Boat links (`BoatManager`) are separate from the role: `skipper`
   and `rc` accounts may be linked to boats and manage crew for those boats only; `crew` never. Every new endpoint declares its role, and gets a test that
   the other roles receive 403 and anonymous callers 401.
+- Two sign-in modes (`AUTH_MODE`): `password` (default) and `cognito` (ID token in `Authorization: Bearer`, no cookies,
+  no local passwords). An endpoint that creates or checks a local password calls `require_password_mode()` first; keep
+  `/api/config`, tests and `docs/AUTHENTICATION.md` in step with any change to either mode.
 - Public endpoints expose no contact details, payment data or account information. A test enforces it; keep it
   passing and extend it for new fields.
 - Anonymous writes need the CSRF check, a honeypot, validation and a rate limit. Never trust a client-supplied ID

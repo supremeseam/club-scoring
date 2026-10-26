@@ -42,6 +42,38 @@ This was checked in a production-style run: with Caddy in front, a forged `X-For
 | `BEHIND_PROXY` | on when `DEBUG=0` | Trust the right-most `X-Forwarded-For` |
 Fixed in `settings.py`: `PASSWORD_MIN_LENGTH` 15, `PASSWORD_MAX_LENGTH` 256, idle timeout 12 h (`SESSION_COOKIE_AGE`), `AXES_FAILURE_LIMIT` 10, `AXES_COOLOFF_TIME` 15 min, `ACCOUNT_FAILURE_LIMIT` 100 per `ACCOUNT_FAILURE_WINDOW_MINUTES` 60.
 
+## Optional: sign in with Amazon Cognito
+Everything above describes the default (`AUTH_MODE=password`). A club that already runs a Cognito user pool, for example
+for its website, can let that pool sign people in instead, so a sailor has one account for both. Set `AUTH_MODE=cognito`:
+
+| Setting | Meaning |
+|---|---|
+| `COGNITO_POOLS` | `userPoolId:appClientId`, comma separated (e.g. a members pool and an admins pool). Only ID tokens issued to those app clients are accepted |
+| `COGNITO_RC_GROUPS` | Cognito groups whose members are race committee (default `admins`) |
+| `COGNITO_SIGN_IN_URL` | The club website's sign-in page; the Sign in button sends people there |
+| `COGNITO_TOKEN_STORAGE_KEYS` | Session-storage keys, in preference order, where that page keeps `{idToken, ...}` (first unexpired one wins) |
+
+How it works: the browser sends the person's **ID token** as `Authorization: Bearer ...` on every request. The server
+checks its RS256 signature against the pool's published keys (fetched from the pool's own `cognito-idp` address, which is
+built from `COGNITO_POOLS`, never from the token), the issuer, audience (our app clients), expiry and `token_use=id`.
+Cookies and CSRF play no part, and a leftover Django session never authenticates a request in this mode.
+
+- **Accounts:** the first valid token creates a local account keyed by the person's Cognito `sub` (never by email), with
+  no usable password. Name and email are copied for display. Switching someone off in the Django admin (untick *Active*)
+  blocks them here too.
+- **Roles follow Cognito:** in a `COGNITO_RC_GROUPS` group means race committee, checked on every request, so removing
+  the group takes effect immediately (until the token expires, the person is just crew). Everyone else is `crew`, or
+  `skipper` once the committee links a boat to them (*Crew board, Boat links*); committee members can be linked too.
+- **Switched off in this mode:** `/auth/login`, change password, crew self-registration, skipper login requests and
+  creating or approving password skipper logins all return 404. The Django admin at `ADMIN_URL` keeps its own
+  password login as a break-glass route; give it only to the people who need it.
+- **MFA** is whatever the Cognito pool enforces (`REQUIRE_2FA` does not apply).
+- **Sign out** only forgets the tokens in this browser tab; it does not revoke them at Cognito. Tokens expire on their
+  own (Cognito's default is one hour).
+- **Keys:** a pool's keys are cached for an hour and re-fetched for an unknown key id at most every 10 seconds, so
+  garbage tokens can't make the server hammer Cognito. If the keys can't be fetched, requests are refused, not trusted.
+- Requires the `pyjwt[crypto]` package (in `pyproject.toml`).
+
 ## Everyday tasks (see `RUNBOOK.md`)
 - **New RC account:** admin → Users → add (temporary password; the person is forced to choose their own).
 - **Forgot password:** admin sets a new temporary password; the person is signed out everywhere.

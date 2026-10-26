@@ -19,6 +19,19 @@ class AccountProfile(models.Model):
         return f"{self.user} (must change: {self.must_change_password})"
 
 
+class ExternalIdentity(models.Model):
+    """A person who signs in through an external identity provider (Amazon Cognito) rather than a local password."""
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="external_identity")
+    issuer = models.CharField(max_length=200)
+    subject = models.CharField(max_length=200)        # the provider's permanent id for the person (Cognito "sub")
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["issuer", "subject"], name="uniq_external_identity")]
+
+    def __str__(self):
+        return f"{self.user} ({self.issuer.rsplit('/', 1)[-1]})"
+
+
 def must_change_password(user) -> bool:
     profile = getattr(user, "auth_profile", None)      # a missing profile just means "no"
     return bool(profile and profile.must_change_password)

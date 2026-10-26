@@ -25,6 +25,7 @@ from ninja.errors import HttpError
 
 from accounts.audit import log_event
 from accounts.ip import client_ip
+from accounts.cognito import require_password_mode
 from accounts.models import AccountProfile, account_role
 from boats.models import Boat
 from racing.models import Race, Series
@@ -296,6 +297,7 @@ def signup_withdraw(request, data: TokenIn):
 
 @public_router.post("/skipper-requests")
 def skipper_request(request, data: SkipperRequestIn):
+    require_password_mode()
     _csrf(request)
     if data.website.strip():
         return {"ok": True}
@@ -315,6 +317,7 @@ def skipper_request(request, data: SkipperRequestIn):
 @public_router.post("/register")
 def register_crew(request, data: RegisterIn):
     """Optional crew account: lets a sailor see and withdraw their sign-ups without keeping a link."""
+    require_password_mode()
     _csrf(request)
     if data.website.strip():
         return {"ok": True}
@@ -492,12 +495,15 @@ def _make_skipper(username: str, password: str, boat_ids: list[int], name: str =
 
 def _skipper_out(u: User) -> dict:
     return {"user_id": u.id, "username": u.username, "name": u.first_name, "email": u.email, "role": account_role(u),
+            "external": hasattr(u, "external_identity"),
             "active": u.is_active, "boats": [{"id": m.boat_id, "name": m.boat.name} for m in u.managed_boats.all()]}
 
 
 def _boat_managers():
-    """Accounts that may be linked to boats: skippers and race committee (an account with no profile is rc), never crew."""
-    return User.objects.filter(Q(auth_profile__role__in=("skipper", "rc")) | Q(auth_profile__isnull=True))
+    """Accounts that may be linked to boats: skippers and race committee (an account with no profile is rc), never
+    crew. A person who signs in through Cognito starts as crew and becomes a skipper once linked, so they qualify."""
+    return User.objects.filter(Q(auth_profile__role__in=("skipper", "rc")) | Q(auth_profile__isnull=True)
+                               | Q(external_identity__isnull=False))
 
 
 @manage_router.get("/crew/skippers")
@@ -508,6 +514,7 @@ def rc_skippers(request):
 
 @manage_router.post("/crew/skippers")
 def rc_create_skipper(request, data: SkipperAccountIn):
+    require_password_mode()
     user = _make_skipper(data.username, data.password, data.boat_ids, data.name, data.email)
     log_event("skipper_created", request, user.get_username(), by=request.user.get_username())
     return _skipper_out(user)
@@ -536,7 +543,8 @@ def rc_requests(request):
 
 @manage_router.post("/crew/skipper-requests/{pk}/approve")
 def rc_approve(request, pk: int, data: ApproveIn):
-    req = get_object_or_404(SkipperRequest, pk=pk, status="pending")
+    require_password_mode()
+    req =get_object_or_404(SkipperRequest, pk=pk, status="pending")
     user = _make_skipper(data.username, data.password, data.boat_ids, req.name, req.email)
     req.status = "approved"
     req.save(update_fields=["status"])

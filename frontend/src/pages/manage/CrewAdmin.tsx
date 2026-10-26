@@ -2,6 +2,7 @@ import { Badge, Button, Card, Group, MultiSelect, PasswordInput, Select, Stack, 
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { api, useGet, type S } from "../../api/client";
+import { useSite } from "../../components/Brand";
 import { Query, toastError, toastOk } from "../../components/bits";
 import { STATUS_COLOR, type SignupFull, type SkipperAccount, type SkipperRequestRow } from "../../lib/crew";
 
@@ -47,10 +48,12 @@ function CreateSkipper({ boats, request, onDone }: { boats: BoatOpt[]; request?:
 
 export default function CrewAdmin() {
   const boats = useBoatOptions();
+  const cognito = useSite().data?.auth_mode === "cognito";
   const skippers = useGet<SkipperAccount[]>("/manage/crew/skippers");
   const requests = useGet<SkipperRequestRow[]>("/manage/crew/skipper-requests");
   const signups = useGet<SignupFull[]>("/manage/crew/signups");
   const qc = useQueryClient();
+  const [tab, setTab] = useState<string | null>(null);      // null until chosen: the first tab depends on the sign-in mode
   const [approving, setApproving] = useState<number | null>(null);
   const [addBoat, setAddBoat] = useState<Record<number, string | null>>({});
   const reload = () => Promise.all(["skippers", "skipper-requests", "signups"].map((k) => qc.invalidateQueries({ queryKey: [`/manage/crew/${k}`] })));
@@ -66,10 +69,10 @@ export default function CrewAdmin() {
   return (
     <Stack>
       <Title order={2}>Crew board</Title>
-      <Tabs defaultValue="requests">
+      <Tabs value={tab ?? (cognito ? "skippers" : "requests")} onChange={setTab}>
         <Tabs.List>
-          <Tabs.Tab value="requests" rightSection={requests.data?.length ? <Badge color="red" variant="filled" size="sm">{requests.data.length}</Badge> : null}>Login requests</Tabs.Tab>
-          <Tabs.Tab value="skippers">Skipper logins</Tabs.Tab>
+          {!cognito && <Tabs.Tab value="requests" rightSection={requests.data?.length ? <Badge color="red" variant="filled" size="sm">{requests.data.length}</Badge> : null}>Login requests</Tabs.Tab>}
+          <Tabs.Tab value="skippers">{cognito ? "Boat links" : "Skipper logins"}</Tabs.Tab>
           <Tabs.Tab value="signups">Sign-ups</Tabs.Tab>
         </Tabs.List>
         <Tabs.Panel value="requests" pt="md">
@@ -105,7 +108,7 @@ export default function CrewAdmin() {
                   <Table.Tbody>
                     {rows.map((u) => (
                       <Table.Tr key={u.user_id}>
-                        <Table.Td>{u.username}<Text size="xs" c="dimmed">{u.name} {u.email}</Text>{u.role === "rc" && <Badge color="indigo" variant="light">committee</Badge>}{!u.active && <Badge color="gray">disabled</Badge>}</Table.Td>
+                        <Table.Td>{u.external ? (u.name || u.email || u.username) : u.username}<Text size="xs" c="dimmed">{u.external ? u.email : `${u.name} ${u.email}`}</Text>{u.role === "rc" && <Badge color="indigo" variant="light">committee</Badge>}{!u.active && <Badge color="gray">disabled</Badge>}</Table.Td>
                         <Table.Td>
                           <Group gap={4}>
                             {u.boats.map((b) => (
@@ -125,8 +128,8 @@ export default function CrewAdmin() {
                 </Table>
               )}
             </Query>
-            <Card withBorder><Title order={5} mb="xs">New skipper login</Title><CreateSkipper boats={boats} onDone={() => void reload()} /></Card>
-            <Text size="xs" c="dimmed">Race committee accounts are listed too: link a boat to one and that person manages its crew under "My boat's crew", still with their committee access. To reset a password or disable a login, use the site admin, as for any account.</Text>
+            {!cognito && <Card withBorder><Title order={5} mb="xs">New skipper login</Title><CreateSkipper boats={boats} onDone={() => void reload()} /></Card>}
+            <Text size="xs" c="dimmed">{cognito && "People appear here after they first sign in. Link a boat to someone to let them manage its crew. "}Race committee accounts are listed too: link a boat to one and that person manages its crew under "My boat's crew", still with their committee access. To reset a password or disable a login, use the site admin, as for any account.</Text>
           </Stack>
         </Tabs.Panel>
         <Tabs.Panel value="signups" pt="md">

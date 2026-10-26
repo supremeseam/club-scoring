@@ -22,10 +22,16 @@ end at build time, so changing it needs a rebuild. Caddy removes the prefix befo
 Django, the admin, the PDFs and the logo URLs all follow it. Leave it unset to serve at the site root (the default).
 Local test: `BASE_PATH=/results npm run dev`, then open <http://localhost:5173/results/>.
 
-Whatever sits in front (a CDN or the main site's server) must pass `/results/*` through to this server **unchanged**,
-and must forward the real visitor address. The app takes the client IP for login lockouts from the right-most
-`X-Forwarded-For` entry Caddy writes, so behind another proxy every visitor would look like that proxy and lock
-each other out. If you put a CDN in front, add its address ranges as trusted proxies in the Caddyfile first.
+**Behind CloudFront.** The route must pass `/results/*` through to this server unchanged, with these headers: the
+visitor's `Authorization`, `Origin`, `Referer`, `X-CSRFToken`, cookies, and `CloudFront-Viewer-Address`; and CloudFront
+must reach the server by its own HTTPS name (not forward the visitor's `Host`). The app takes the client IP for login
+lockouts from the right-most `X-Forwarded-For` entry that Caddy writes, so by default every visitor would look like
+CloudFront and lock each other out. To avoid that, give CloudFront a shared secret to send as `X-Origin-Verify` and
+set the same value as `ORIGIN_VERIFY_SECRET` in `.env`: Caddy then reads the visitor's address from
+`CloudFront-Viewer-Address`, but only on requests that carry the secret (a client cannot fake either header, and
+with no secret set the header is never trusted). Also add the website's address to `CSRF_TRUSTED_ORIGINS`, because
+the browser's requests come from the website, not from this server's own name. The website's Terraform
+(`results.tf` in ayc-website) builds the route and prints all of these settings.
 
 ## Add a race committee (RC) account
 1. Log in at `https://<site>/<ADMIN_URL>` as a superuser → Users → add user. Any active account can enter results; don't tick *Staff* or *Superuser* unless they also administer the site.

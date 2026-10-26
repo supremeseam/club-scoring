@@ -1,3 +1,15 @@
+# The app takes the visitor's address (for login lockouts) from the RIGHT-most X-Forwarded-For entry, so Caddy always
+# overwrites whatever the client sent. Never publish the app's port: it trusts this header.
+# The two CloudFront headers are removed before the request reaches the app, so a client can never forward them.
+(app_proxy) {
+	reverse_proxy app:8000 {
+		header_up X-Forwarded-For {args[0]}
+		header_up -X-Real-IP
+		header_up -CloudFront-Viewer-Address
+		header_up -X-Origin-Verify
+	}
+}
+
 # SITE_ADDRESS: a domain (Let's Encrypt certificate, automatic) or "localhost" (Caddy's internal CA).
 {$SITE_ADDRESS:localhost} {
 	encode zstd gzip
@@ -20,11 +32,18 @@
 	# API and the (relocated) Django admin go to gunicorn.
 	@django path /api/* /{$ADMIN_URL:manage-admin/}*
 	handle @django {
-		reverse_proxy app:8000 {
-			# The app takes the client IP (for login lockouts) from the RIGHT-most X-Forwarded-For entry, so
-			# overwrite whatever the client sent. Never publish the app's port: it trusts this header.
-			header_up X-Forwarded-For {remote_host}
-			header_up -X-Real-IP
+		# Behind CloudFront every request arrives from CloudFront, so the visitor's address comes from the
+		# CloudFront-Viewer-Address header ("ip:port", or "[ipv6]:port"). It is believed only on a request that carries
+		# the shared secret CloudFront adds (X-Origin-Verify = ORIGIN_VERIFY_SECRET), and never when no secret is set.
+		@viaCloudFront {
+			expression `{env.ORIGIN_VERIFY_SECRET} != "" && {http.request.header.X-Origin-Verify} == {env.ORIGIN_VERIFY_SECRET}`
+			header_regexp viewer CloudFront-Viewer-Address ^\[?([0-9A-Fa-f:.]+?)\]?:[0-9]+$
+		}
+		handle @viaCloudFront {
+			import app_proxy {http.regexp.viewer.1}
+		}
+		handle {
+			import app_proxy {remote_host}
 		}
 	}
 

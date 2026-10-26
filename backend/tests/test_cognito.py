@@ -261,3 +261,51 @@ def test_settings_refuse_incomplete_or_unknown_auth_configuration(env):
 def test_password_mode_is_the_default():
     out = _settings_with(AUTH_MODE="")
     assert out.returncode == 0 and out.stdout.startswith("password")
+
+
+# ---- more than one way to sign in -------------------------------------------------------------------------------
+# Race committee, members and crew each sign in on a different page of the club website, so the app's sign-in page
+# offers all of them (COGNITO_SIGN_IN_LINKS, "label|address" pairs) instead of sending everyone to one.
+def _links_with(**env) -> subprocess.CompletedProcess:
+    full = {**os.environ, "DJANGO_SETTINGS_MODULE": "config.settings", **env}
+    code = "from django.conf import settings as s; print(s.COGNITO_SIGN_IN_LINKS)"
+    return subprocess.run([sys.executable, "-c", code], env=full, cwd=BACKEND, capture_output=True, text=True)
+
+
+LINKS = "Race committee|/manage/,Members|/members/,Crew and everyone else|/crew/"
+
+
+def test_config_lists_every_sign_in_option(settings):
+    settings.COGNITO_SIGN_IN_LINKS = [("Race committee", "/manage/"), ("Members", "/members/")]
+    cfg = Client().get("/api/config").json()
+    assert cfg["sign_in_links"] == [{"label": "Race committee", "url": "/manage/"}, {"label": "Members", "url": "/members/"}]
+    settings.AUTH_MODE = "password"
+    assert Client().get("/api/config").json()["sign_in_links"] == []
+
+
+def test_a_single_sign_in_address_still_works_as_one_option(settings):
+    settings.COGNITO_SIGN_IN_LINKS = []
+    cfg = Client().get("/api/config").json()
+    assert cfg["sign_in_links"] == [{"label": "Sign in on the club website", "url": "/members/"}]
+    settings.COGNITO_SIGN_IN_URL = ""
+    assert Client().get("/api/config").json()["sign_in_links"] == []
+
+
+def test_settings_parse_sign_in_links():
+    out = _links_with(AUTH_MODE="cognito", COGNITO_POOLS=f"{POOL}:{CLIENT}", COGNITO_SIGN_IN_LINKS=LINKS)
+    assert out.returncode == 0, out.stderr
+    assert "('Race committee', '/manage/')" in out.stdout
+
+
+@pytest.mark.parametrize("bad", [
+    "no-separator", "|/manage/", "Label|", "Label|javascript:alert(1)", "Label|//evil.example/x",
+    "Label|http://plain.example/", "x" * 61 + "|/manage/", "Label|/a b",
+])
+def test_settings_refuse_unsafe_or_malformed_sign_in_links(bad):
+    out = _links_with(AUTH_MODE="cognito", COGNITO_POOLS=f"{POOL}:{CLIENT}", COGNITO_SIGN_IN_LINKS=bad)
+    assert out.returncode != 0
+
+
+def test_sign_in_links_may_point_at_another_https_site():
+    out = _links_with(AUTH_MODE="cognito", COGNITO_POOLS=f"{POOL}:{CLIENT}", COGNITO_SIGN_IN_LINKS="Club site|https://www.example.org/members/")
+    assert out.returncode == 0, out.stderr

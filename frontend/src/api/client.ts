@@ -9,6 +9,7 @@ export type SiteConfig = {
   base_path: string;
   auth_mode: "password" | "cognito";
   sign_in_url: string;
+  sign_in_links: { label: string; url: string }[];
   token_storage_keys: string[];
   cognito_pools: Pool[];
   club_name: string;

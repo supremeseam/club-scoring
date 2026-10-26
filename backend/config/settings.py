@@ -4,7 +4,7 @@ from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
 
-from .auth_config import parse_auth_mode, parse_cognito_pools, split_list
+from .auth_config import parse_auth_mode, parse_cognito_pools, parse_sign_in_links, split_list
 from .base_path import normalize_base_path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -57,6 +57,9 @@ COGNITO_RC_GROUPS = split_list(os.environ.get("COGNITO_RC_GROUPS", "admins"))
 # Where the browser sends a signed-out visitor (the club website's sign-in page), and the browser storage keys
 # (JSON {idToken, expiresAt}) under which that page keeps the sign-in tokens.
 COGNITO_SIGN_IN_URL = os.environ.get("COGNITO_SIGN_IN_URL", "")
+# Several sign-in pages ("Race committee|/manage/, Members|/members/"): race committee, members and crew sign in on
+# different pages of the club website. When set it replaces COGNITO_SIGN_IN_URL on the sign-in screen.
+COGNITO_SIGN_IN_LINKS = parse_sign_in_links(os.environ.get("COGNITO_SIGN_IN_LINKS", ""))
 COGNITO_TOKEN_STORAGE_KEYS = split_list(os.environ.get("COGNITO_TOKEN_STORAGE_KEYS", ""))
 CLUB_NAME = os.environ.get("CLUB_NAME", "Your Yacht Club")
 CLUB_SHORT_NAME = os.environ.get("CLUB_SHORT_NAME", "") or CLUB_NAME

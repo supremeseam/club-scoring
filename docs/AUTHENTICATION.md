@@ -51,8 +51,9 @@ for its website, can let that pool sign people in instead, so a sailor has one a
 | Setting | Meaning |
 |---|---|
 | `COGNITO_POOLS` | `userPoolId:appClientId`, comma separated (e.g. a members pool and an admins pool). Only ID tokens issued to those app clients are accepted |
-| `COGNITO_RC_GROUPS` | Cognito groups whose members are race committee (default `admins`) |
+| `COGNITO_RC_GROUPS` | Cognito groups whose members are race committee (default `admins`). Several are fine (`admins,race-committee`): a club can keep race committee apart from other administrators by giving them their own group |
 | `COGNITO_SIGN_IN_URL` | The club website's sign-in page; the Sign in button sends people there |
+| `COGNITO_SIGN_IN_LINKS` | Optional `label\|address` pairs, comma separated, e.g. `Race committee\|/manage/,Members\|/members/`. When set, the sign-in screen offers each one instead of the single `COGNITO_SIGN_IN_URL`. An address is a path on this site or an `https://` address |
 | `COGNITO_TOKEN_STORAGE_KEYS` | Session-storage keys, in preference order, where that page keeps `{idToken, refreshToken, ...}` (first usable one wins) |
 | `CSP_CONNECT_EXTRA` | Extra address Caddy lets the page call; for token renewal set it to `https://cognito-idp.<region>.amazonaws.com` |
 

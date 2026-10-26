@@ -100,6 +100,17 @@ def _me(user) -> dict:
             "unseen_requests": unseen_requests(user) if manages_boats else 0}
 
 
+def sign_in_links() -> list[dict]:
+    """The sign-in pages to offer on the sign-in screen (Cognito mode only): the configured list, else the one address."""
+    if settings.AUTH_MODE != "cognito":
+        return []
+    if settings.COGNITO_SIGN_IN_LINKS:
+        return [{"label": label, "url": url} for label, url in settings.COGNITO_SIGN_IN_LINKS]
+    if settings.COGNITO_SIGN_IN_URL:
+        return [{"label": "Sign in on the club website", "url": settings.COGNITO_SIGN_IN_URL}]
+    return []
+
+
 @api.get("/config", tags=["public"])
 def site_config(request):
     """Per-club settings the SPA needs before login (all come from environment variables)."""
@@ -114,6 +125,7 @@ def site_config(request):
     return {"club_name": settings.CLUB_NAME, "club_short_name": settings.CLUB_SHORT_NAME,
             "base_path": settings.BASE_PATH, "auth_mode": settings.AUTH_MODE,
             "sign_in_url": settings.COGNITO_SIGN_IN_URL if settings.AUTH_MODE == "cognito" else "",
+            "sign_in_links": sign_in_links(),
             "token_storage_keys": settings.COGNITO_TOKEN_STORAGE_KEYS if settings.AUTH_MODE == "cognito" else [],
             "cognito_pools": [{"pool_id": p, "client_id": c} for p, c in settings.COGNITO_POOLS]
             if settings.AUTH_MODE == "cognito" else [],

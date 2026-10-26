@@ -1,0 +1,12 @@
+# Copy this file to terraform.tfvars (which git ignores) and edit. Every line is optional.
+
+region = "us-west-2"
+name   = "club-scoring"
+
+# Where cost alerts go. The budget covers the WHOLE AWS account, not only this project.
+budget_email       = "treasurer@example.org"
+monthly_budget_usd = 10
+
+# bundle_id             = "micro_3_0"
+# automatic_snapshots   = false
+# backup_retention_days = 30

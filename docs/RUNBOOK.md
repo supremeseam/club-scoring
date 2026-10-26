@@ -3,7 +3,7 @@
 Ownership: the AWS account, domain and GitHub repo belong to **the club** (club email and billing, with the maintainers invited as admins). At least one other member has admin access to AWS and the app.
 
 ## Provision AWS and first deploy
-Everything on AWS is created by Terraform from `deploy/terraform/`; follow **`deploy/terraform/README.md`**. In short:
+There are two ways to host it; pick one. **Lightsail** (`deploy/terraform-lightsail/`, about $7/month, a flat price that includes the IP and disk) is the cheaper one: follow **`deploy/terraform-lightsail/README.md`**, which points back to the steps below. **EC2** (`deploy/terraform/`, about $10-11/month, uses an IAM role instead of an access key) is described here. Everything on AWS is created by Terraform; follow **`deploy/terraform/README.md`**. In short:
 
 1. `terraform apply` creates the server (Ubuntu 24.04 ARM `t4g.micro`, encrypted disk, IMDSv2 required, fixed IP), a private versioned S3 backup bucket, an access role limited to that bucket and Session Manager, a firewall allowing only ports 80 and 443 (IPv4, no SSH), weekly disk snapshots (4 kept) and an optional budget alert.
 2. Connect with **Session Manager** (the link Terraform prints), run `deploy/bootstrap.sh`, edit `/opt/scoring/.env` (Terraform prints the lines), then `bash deploy/deploy.sh`.

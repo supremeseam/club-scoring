@@ -1,4 +1,5 @@
-# Continuous SQLite replication to S3. Credentials come from the EC2 instance role (no static keys).
+# Continuous SQLite replication to S3. On EC2 the credentials come from the instance role (no static keys); on
+# Lightsail (no instance roles) they come from AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY in .env.
 dbs:
   - path: /data/db.sqlite3
     replicas:

@@ -7,7 +7,7 @@ PHRF **time-on-distance** race scoring for a yacht club: multiple fleets, saved 
 - **Scoring:** `backend/scoring/` is pure Python (no Django). All scoring happens on the server; the UI only displays it.
 - **Crew board:** skippers (logins made by the race committee) post crew openings; sailors sign up with or without an account. See `docs/CREW.md`.
 - **Pursuit starts:** a series or a single race can use a pursuit format; the race screen works out each boat's start time. See `docs/PURSUIT.md`.
-- **Hosting plan:** one EC2 t4g.micro running `compose.yml` (Caddy + Django + Litestream → S3), about $9–11/month. See `docs/RUNBOOK.md`.
+- **Hosting plan:** one small server running `compose.yml` (Caddy + Django + Litestream → S3). Either AWS Lightsail, about $7/month (`deploy/terraform-lightsail/`), or EC2 t4g.micro, about $9–11/month (`deploy/terraform/`). See `docs/RUNBOOK.md`.
 
 ## Deploy it for your club
 This is open source: every club runs its own copy. Run `npm run setup` for a guided `.env`, then follow **[docs/CONFIGURATION.md](docs/CONFIGURATION.md)** (branding, accounts, what to enter in the app) and **[docs/RUNBOOK.md](docs/RUNBOOK.md)** (hosting). Branding (name, logo, colour, time zone) is just settings; no code changes.

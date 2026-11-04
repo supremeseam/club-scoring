@@ -39,11 +39,11 @@ function RaceBody({ race, onRaceChanged }: { race: S["RaceEditor"]; onRaceChange
   const qc = useQueryClient();
 
   const setStatus = async (status: string | null, final?: boolean, membersFree?: boolean,
-                           patch: { race_format?: string; pursuit_target_minutes?: number | null } = {}) => {
+                           patch: { race_format?: string; pursuit_target_minutes?: number | null; date?: string } = {}) => {
     try {
       await api(`/manage/races/${race.id}`, {
         method: "PUT",
-        body: { date: race.date, status: status ?? race.status, time_limit_minutes: race.time_limit_minutes,
+        body: { date: patch.date ?? race.date, status: status ?? race.status, time_limit_minutes: race.time_limit_minutes,
                 results_final: final ?? race.results_final, number: race.number,
                 members_free: membersFree ?? race.members_free,
                 race_format: patch.race_format ?? race.race_format ?? "",
@@ -81,7 +81,9 @@ function RaceBody({ race, onRaceChanged }: { race: S["RaceEditor"]; onRaceChange
             value={race.pursuit_target_minutes ?? ""}
             onChange={(v) => { if (v === "" || Number(v) >= 1) void setStatus(null, undefined, undefined, { pursuit_target_minutes: v === "" ? null : Number(v) }); }} />
         )}
-        <Text size="sm" c="dimmed">{race.date}{single ? " Â· single race (not part of a series)" : ""}</Text>
+        <TextInput type="date" label="Race date" w={160} value={race.date}
+          onChange={(e) => { const d = e.currentTarget.value; if (d) void setStatus(null, undefined, undefined, { date: d }); }} />
+        {single && <Text size="sm" c="dimmed">single race (not part of a series)</Text>}
       </Group>
       {race.status === "scheduled" && (
         <Alert color="blue">Set the race status to <b>sailed</b> once the first start goes, so results are scored and published.</Alert>
@@ -207,7 +209,7 @@ function PursuitSchedule({ startId }: { startId: number }) {
             <Group justify="space-between">
               <Text fw={700}>Pursuit start times</Text>
               <Text size="sm" c="dimmed">
-                {s.method === "tod" ? `Gap = rating difference × ${s.distance_nm ?? "?"} nm` : `Gap from TCF ratio over ${s.target_minutes ?? "?"} min`}
+                {s.method === "tod" ? `Gap = rating difference \u00d7 ${s.distance_nm ?? "?"} nm` : `Gap from TCF ratio over ${s.target_minutes ?? "?"} min`}
               </Text>
             </Group>
             {s.error && <Alert color="orange">{s.error}.</Alert>}

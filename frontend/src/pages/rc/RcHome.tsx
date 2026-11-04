@@ -35,11 +35,12 @@ function Races({ seriesId }: { seriesId: number }) {
   const q = useGet<S["RaceEditor"][]>(`/manage/series/${seriesId}/races`);
   const qc = useQueryClient();
   const nav = useNavigate();
+  const [newDate, setNewDate] = useState(new Date().toISOString().slice(0, 10));
   const addRace = async () => {
     try {
       const r = await api<S["RaceEditor"]>(`/manage/series/${seriesId}/races`, {
         method: "POST",
-        body: { date: new Date().toISOString().slice(0, 10), status: "scheduled" },
+        body: { date: newDate, status: "scheduled" },
       });
       await qc.invalidateQueries({ queryKey: [`/manage/series/${seriesId}/races`] });
       nav(`/rc/races/${r.id}`);
@@ -53,7 +54,10 @@ function Races({ seriesId }: { seriesId: number }) {
         <Stack gap="xs">
           <Group justify="space-between">
             <Text fw={600}>Races</Text>
-            <Button size="xs" onClick={addRace}>New race today</Button>
+            <Group gap="xs" align="flex-end">
+              <TextInput type="date" size="xs" aria-label="Date of the new race" value={newDate} onChange={(e) => setNewDate(e.currentTarget.value)} />
+              <Button size="xs" onClick={addRace} disabled={!newDate}>Add race</Button>
+            </Group>
           </Group>
           {races.map((r) => (
             <Group key={r.id} justify="space-between" p="xs" style={{ border: "1px solid var(--mantine-color-default-border)", borderRadius: 6 }}>

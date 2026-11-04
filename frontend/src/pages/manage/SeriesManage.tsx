@@ -60,7 +60,7 @@ function Detail({ series }: { series: Series }) {
           <Button variant="default" onClick={() => setEditing(true)}>Edit settings</Button>
         </Group>
         <Text size="sm">
-          {series.race_format === "pursuit" ? "Pursuit start � " : ""}Scoring: {series.scoring_system === "high" ? "high point" : "low point"}{" \u00b7 "}Discards: {series.discard_thresholds.length ? series.discard_thresholds.map((t) => `1 after ${t} races`).join(", ") : "none"}
+          {series.race_format === "pursuit" ? "Pursuit start \u00b7 " : ""}Scoring: {series.scoring_system === "high" ? "high point" : "low point"}{" \u00b7 "}Discards: {series.discard_thresholds.length ? series.discard_thresholds.map((t) => `1 after ${t} races`).join(", ") : "none"}
           {" · "}RC duty credit: {series.rcd_method}{" · "}Combined overall: {series.combined_overall ? "on" : "off"}
         </Text>
         <Entries series={series} />

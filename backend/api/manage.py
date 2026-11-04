@@ -222,8 +222,8 @@ def _check_course(data: s.CourseIn):
         raise HttpError(422, "A course needs a name")
     if data.distance_override is not None and data.distance_override <= 0:
         raise HttpError(422, "Distance must be greater than zero")
-    if data.distance_override is None and len(data.mark_ids) < 2:
-        raise HttpError(422, "Add at least two marks, or enter the course distance")
+    # Marks are optional (a course may be just a name and, later, a distance entered on the race). A mark may
+    # appear more than once, e.g. start and finish at the same mark.
 
 
 def _set_legs(c: Course, mark_ids: list[int]):

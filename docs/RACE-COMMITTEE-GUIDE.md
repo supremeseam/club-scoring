@@ -15,7 +15,9 @@ Forgot your password? Ask a site administrator to reset it. You will pick a new 
 - **Series:** create the series (name, season, fleets, discards, scoring). *Low Point* is the standard. Choose
   *Pursuit start* here if the races use staggered pursuit starts. Add the race dates, or generate weekly dates.
 - **Entry list:** open the series and choose which boats are entered and in which fleet.
-- **Marks & courses:** only if you use courses from the course chart.
+- **Marks & courses:** only if you use courses from the course chart. A course can have no marks at all (then type the
+  distance on the race screen). Add marks one at a time in rounding order; a mark may be used more than once, for
+  example to start and finish at the same mark.
 
 ## On race day
 1. **Race committee** > pick the race.

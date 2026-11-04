@@ -82,14 +82,39 @@ def test_time_on_time_rating_must_be_positive():
     assert r.status_code == 200
 
 
-def test_course_needs_marks_or_a_distance():
+def test_course_can_have_no_marks_and_marks_can_repeat():
     wl = RatingType.objects.get(code="WL")
-    m = Mark.objects.create(name="M", lat=34.1, lon=-119.2)
+    a = Mark.objects.create(name="Start", lat=34.0, lon=-119.0)
+    b = Mark.objects.create(name="Windward", lat=34.1, lon=-119.0)
     c = editor()
-    assert send(c, "post", "/api/manage/courses", {"name": "C", "course_type_id": wl.id, "mark_ids": [m.id]}).status_code == 422
-    assert send(c, "post", "/api/manage/courses", {"name": "C", "course_type_id": wl.id, "mark_ids": []}).status_code == 422
-    assert send(c, "post", "/api/manage/courses", {"name": "C", "course_type_id": wl.id, "mark_ids": [],
-                                                   "distance_override": 3}).status_code == 200
+    body = {"course_type_id": wl.id}
+    assert send(c, "post", "/api/manage/courses", {**body, "name": "Empty", "mark_ids": []}).status_code == 200
+    assert send(c, "post", "/api/manage/courses", {**body, "name": "One", "mark_ids": [a.id]}).status_code == 200
+    assert send(c, "post", "/api/manage/courses", {**body, "name": "Bad", "mark_ids": [], "distance_override": 0}).status_code == 422
+    assert send(c, "post", "/api/manage/courses", {**body, "name": "Unknown", "mark_ids": [999]}).status_code == 422
+    one_way = send(c, "post", "/api/manage/courses", {**body, "name": "Out", "mark_ids": [a.id, b.id]}).json()
+    loop = send(c, "post", "/api/manage/courses", {**body, "name": "Round", "mark_ids": [a.id, b.id, a.id]})
+    assert loop.status_code == 200 and loop.json()["mark_ids"] == [a.id, b.id, a.id]      # start = finish, kept in order
+    assert abs(float(loop.json()["distance_nm"]) - 2 * float(one_way["distance_nm"])) < 0.02     # out and back
+
+
+def test_a_course_without_a_distance_cannot_start_a_distance_scored_race():
+    from datetime import date
+    from boats.models import Fleet
+    from courses.models import Course
+    from racing.models import Race, Series
+    wl = RatingType.objects.get(code="WL")
+    fleet = Fleet.objects.create(name="F")
+    course = Course.objects.create(name="No marks", course_type=wl)
+    ser = Series.objects.create(name="S", season=2026)
+    ser.fleets.add(fleet)
+    race = Race.objects.create(series=ser, number=1, date=date(2026, 6, 1))
+    c = editor()
+    body = {"fleet_id": fleet.id, "course_id": course.id, "start_time": "2026-06-01T12:00:00"}
+    r = send(c, "put", f"/api/manage/races/{race.id}/starts", body)
+    assert r.status_code == 422 and "distance" in r.json()["detail"].lower()
+    ok = send(c, "put", f"/api/manage/races/{race.id}/starts", {**body, "distance_override": 4.5})
+    assert ok.status_code == 200 and float(ok.json()["distance_nm"]) == 4.5
 
 
 def test_series_needs_a_name_a_fleet_and_a_fee_when_payment_is_required():

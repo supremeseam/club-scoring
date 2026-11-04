@@ -37,11 +37,31 @@ export default function Courses() {
     setLegs(next);
   };
 
-  const addMark = async () => {
+  const [editingMark, setEditingMark] = useState<number | null>(null);
+  const resetMark = () => { setEditingMark(null); setMn(""); setLat(""); setLon(""); };
+  const saveMark = async () => {
     try {
-      await api("/manage/marks", { method: "POST", body: { name: mn, lat, lon } });
-      setMn(""); setLat(""); setLon("");
+      await api(editingMark ? `/manage/marks/${editingMark}` : "/manage/marks", { method: editingMark ? "PUT" : "POST", body: { name: mn, lat, lon } });
+      toastOk(editingMark ? "Mark saved" : "Mark added");
+      resetMark();
       await qc.invalidateQueries({ queryKey: ["/manage/marks"] });
+      await qc.invalidateQueries({ queryKey: ["/manage/courses"] });      // distances may have changed
+    } catch (e) { toastError(e); }
+  };
+  const deleteMark = async (m: S["MarkIO"]) => {
+    if (!window.confirm(`Delete the mark "${m.name}"?`)) return;
+    try {
+      await api(`/manage/marks/${m.id}`, { method: "DELETE" });
+      if (editingMark === m.id) resetMark();
+      await qc.invalidateQueries({ queryKey: ["/manage/marks"] });
+    } catch (e) { toastError(e); }
+  };
+  const deleteCourse = async (c: S["CourseOut"]) => {
+    if (!window.confirm(`Delete the course "${c.name}"?`)) return;
+    try {
+      await api(`/manage/courses/${c.id}`, { method: "DELETE" });
+      if (editing === c.id) resetForm();
+      await qc.invalidateQueries({ queryKey: ["/manage/courses"] });
     } catch (e) { toastError(e); }
   };
   const saveCourse = async () => {
@@ -62,8 +82,14 @@ export default function Courses() {
       <Query q={marks}>
         {(list) => (
           <Table withTableBorder maw={600}>
-            <Table.Thead><Table.Tr><Table.Th>Mark</Table.Th><Table.Th>Lat</Table.Th><Table.Th>Lon</Table.Th></Table.Tr></Table.Thead>
-            <Table.Tbody>{list.map((m) => <Table.Tr key={m.id}><Table.Td>{m.name}</Table.Td><Table.Td>{m.lat}</Table.Td><Table.Td>{m.lon}</Table.Td></Table.Tr>)}</Table.Tbody>
+            <Table.Thead><Table.Tr><Table.Th>Mark</Table.Th><Table.Th>Lat</Table.Th><Table.Th>Lon</Table.Th><Table.Th /></Table.Tr></Table.Thead>
+            <Table.Tbody>{list.map((m) => <Table.Tr key={m.id}><Table.Td>{m.name}</Table.Td><Table.Td>{m.lat}</Table.Td><Table.Td>{m.lon}</Table.Td>
+              <Table.Td>
+                <Group gap={4} wrap="nowrap">
+                  <Button size="compact-xs" variant="default" onClick={() => { setEditingMark(m.id ?? null); setMn(m.name); setLat(m.lat); setLon(m.lon); }}>Edit</Button>
+                  <Button size="compact-xs" variant="subtle" color="red" onClick={() => deleteMark(m)}>Delete</Button>
+                </Group>
+              </Table.Td></Table.Tr>)}</Table.Tbody>
           </Table>
         )}
       </Query>
@@ -71,8 +97,10 @@ export default function Courses() {
         <TextInput label="Name" value={mn} onChange={(e) => setMn(e.currentTarget.value)} />
         <NumberInput label="Latitude" w={130} decimalScale={5} value={lat} onChange={(v) => setLat(v === "" ? "" : Number(v))} />
         <NumberInput label="Longitude" w={130} decimalScale={5} value={lon} onChange={(v) => setLon(v === "" ? "" : Number(v))} />
-        <Button onClick={addMark} disabled={!mn || lat === "" || lon === ""}>Add mark</Button>
+        <Button onClick={saveMark} disabled={!mn.trim() || lat === "" || lon === ""}>{editingMark ? "Save mark" : "Add mark"}</Button>
+        {editingMark && <Button variant="default" onClick={resetMark}>Cancel</Button>}
       </Group>
+      {editingMark && <Text size="xs" c="orange">Moving a mark changes the distance of every course through it and rescores races already sailed on those courses.</Text>}
 
       <Title order={2} mt="lg">Courses</Title>
       <Query q={courses}>
@@ -85,7 +113,10 @@ export default function Courses() {
                   <Table.Td>{c.name}</Table.Td><Table.Td>{c.course_type}</Table.Td>
                   <Table.Td ta="right">{Number(c.distance_nm) > 0 ? Number(c.distance_nm).toFixed(2) : <Text span size="sm" c="dimmed">none yet</Text>}{c.distance_override !== null && <Text span size="xs" c="dimmed"> (entered)</Text>}</Table.Td>
                   <Table.Td>{c.description || c.mark_ids.map((id) => marks.data?.find((m) => m.id === id)?.name).join(" → ")}</Table.Td>
-                  <Table.Td><Button size="compact-xs" variant="default" onClick={() => startEdit(c)}>Edit</Button></Table.Td>
+                  <Table.Td><Group gap={4} wrap="nowrap">
+                    <Button size="compact-xs" variant="default" onClick={() => startEdit(c)}>Edit</Button>
+                    <Button size="compact-xs" variant="subtle" color="red" onClick={() => deleteCourse(c)}>Delete</Button>
+                  </Group></Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>

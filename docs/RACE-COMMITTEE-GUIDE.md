@@ -18,7 +18,8 @@ Forgot your password? Ask a site administrator to reset it. You will pick a new 
 - **Marks & courses:** only if you use courses from the course chart. A course can have no marks at all (then type the
   distance on the race screen). Add marks one at a time in rounding order; a mark may be used more than once, for
   example to start and finish at the same mark. Use **Edit** on a course to change it; changing its
-  marks or distance rescores races already sailed on it.
+  marks or distance rescores races already sailed on it. Marks can be edited too (moving one rescores courses through it). A course that
+  has been used in a race, or a mark used by a course, cannot be deleted; the app says what is using it.
 
 ## On race day
 1. **Race committee** > pick the race.

@@ -202,11 +202,27 @@ def create_mark(request, data: s.MarkIO):
 
 
 @router.put("/marks/{pk}", response=s.MarkIO)
+@transaction.atomic
 def update_mark(request, pk: int, data: s.MarkIO):
     obj = get_object_or_404(Mark, pk=pk)
     for k, v in data.dict(exclude={"id"}).items():
         setattr(obj, k, v)
-    return _save(obj)
+    _save(obj)
+    # moving a mark changes the computed distance of every course through it, so rescore races already sailed
+    for course in Course.objects.filter(legs__mark=obj).distinct():
+        services.recalc_course_starts(course)
+    return obj
+
+
+@router.delete("/marks/{pk}")
+def delete_mark(request, pk: int):
+    """Refused while any course uses the mark (remove it from those courses first)."""
+    obj = get_object_or_404(Mark, pk=pk)
+    used = sorted(set(CourseLeg.objects.filter(mark=obj).values_list("course__name", flat=True)))
+    if used:
+        raise HttpError(409, f"{obj.name} is used by: {', '.join(used)}. Remove it from those courses first.")
+    obj.delete()
+    return {"ok": True}
 
 
 def _course_out(c: Course) -> dict:
@@ -262,6 +278,18 @@ def update_course(request, pk: int, data: s.CourseIn):
     _set_legs(c, data.mark_ids)
     services.recalc_course_starts(c)         # races already sailed on this course are rescored with the new distance
     return _course_out(c)
+
+
+@router.delete("/courses/{pk}")
+def delete_course(request, pk: int):
+    """Refused while any race has started on the course: deleting it would orphan those results."""
+    c = get_object_or_404(Course, pk=pk)
+    races = Start.objects.filter(course=c).values("race").distinct().count()
+    if races:
+        raise HttpError(409, f"{c.name} was used in {races} race{'s' if races != 1 else ''}, so it can't be deleted. "
+                             "Rename it or change its marks instead.")
+    c.delete()
+    return {"ok": True}
 
 
 # ---- series ---------------------------------------------------------------------

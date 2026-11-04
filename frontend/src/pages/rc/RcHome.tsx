@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, useGet, type S } from "../../api/client";
-import { Query, toastError } from "../../components/bits";
+import { Query, toastError, toastOk } from "../../components/bits";
 import { fmtDate } from "../../lib/time";
 
 export default function RcHome() {
@@ -34,7 +34,6 @@ export default function RcHome() {
 function Races({ seriesId }: { seriesId: number }) {
   const q = useGet<S["RaceEditor"][]>(`/manage/series/${seriesId}/races`);
   const qc = useQueryClient();
-  const nav = useNavigate();
   const [newDate, setNewDate] = useState(new Date().toISOString().slice(0, 10));
   const addRace = async () => {
     try {
@@ -43,7 +42,7 @@ function Races({ seriesId }: { seriesId: number }) {
         body: { date: newDate, status: "scheduled" },
       });
       await qc.invalidateQueries({ queryKey: [`/manage/series/${seriesId}/races`] });
-      nav(`/rc/races/${r.id}`);
+      toastOk(`Race ${r.number} added for ${fmtDate(r.date)}`);      // stay on the list so more races can be added
     } catch (e) {
       toastError(e);
     }

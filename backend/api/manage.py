@@ -260,6 +260,7 @@ def update_course(request, pk: int, data: s.CourseIn):
     c.description = data.description
     _save(c)
     _set_legs(c, data.mark_ids)
+    services.recalc_course_starts(c)         # races already sailed on this course are rescored with the new distance
     return _course_out(c)
 
 

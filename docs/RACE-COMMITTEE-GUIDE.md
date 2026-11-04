@@ -17,7 +17,8 @@ Forgot your password? Ask a site administrator to reset it. You will pick a new 
 - **Entry list:** open the series and choose which boats are entered and in which fleet.
 - **Marks & courses:** only if you use courses from the course chart. A course can have no marks at all (then type the
   distance on the race screen). Add marks one at a time in rounding order; a mark may be used more than once, for
-  example to start and finish at the same mark.
+  example to start and finish at the same mark. Use **Edit** on a course to change it; changing its
+  marks or distance rescores races already sailed on it.
 
 ## On race day
 1. **Race committee** > pick the race.

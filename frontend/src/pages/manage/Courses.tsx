@@ -1,8 +1,8 @@
 import { ActionIcon, Button, Card, Group, NumberInput, Select, Stack, Table, Text, TextInput, Title } from "@mantine/core";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { api, useGet, type S } from "../../api/client";
-import { Query, toastError } from "../../components/bits";
+import { Query, toastError, toastOk } from "../../components/bits";
 
 export default function Courses() {
   const marks = useGet<S["MarkIO"][]>("/manage/marks");
@@ -17,6 +17,16 @@ export default function Courses() {
   const [legs, setLegs] = useState<string[]>([]);
   const [ov, setOv] = useState<number | "">("");
   const [pick, setPick] = useState<string | null>(null);
+  const [editing, setEditing] = useState<number | null>(null);
+  const [desc, setDesc] = useState("");
+  const formRef = useRef<HTMLDivElement>(null);
+  const startEdit = (c: S["CourseOut"]) => {
+    setEditing(c.id);
+    setCn(c.name); setCt(String(c.course_type_id)); setLegs(c.mark_ids.map(String));
+    setOv(c.distance_override ?? ""); setDesc(c.description ?? "");
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+  const resetForm = () => { setEditing(null); setCn(""); setCt(null); setLegs([]); setOv(""); setDesc(""); };
   const markName = (id: string) => marks.data?.find((m) => String(m.id) === id)?.name ?? id;
   const addLeg = (id: string | null) => { if (id) { setLegs([...legs, id]); setPick(null); } };
   const moveLeg = (i: number, d: -1 | 1) => {
@@ -34,13 +44,14 @@ export default function Courses() {
       await qc.invalidateQueries({ queryKey: ["/manage/marks"] });
     } catch (e) { toastError(e); }
   };
-  const addCourse = async () => {
+  const saveCourse = async () => {
     try {
-      await api("/manage/courses", {
-        method: "POST",
-        body: { name: cn, course_type_id: Number(ct), mark_ids: legs.map(Number), distance_override: ov === "" ? null : ov },
+      await api(editing ? `/manage/courses/${editing}` : "/manage/courses", {
+        method: editing ? "PUT" : "POST",
+        body: { name: cn, course_type_id: Number(ct), mark_ids: legs.map(Number), distance_override: ov === "" ? null : ov, description: desc },
       });
-      setCn(""); setLegs([]); setOv("");
+      toastOk(editing ? "Course saved" : "Course added");
+      resetForm();
       await qc.invalidateQueries({ queryKey: ["/manage/courses"] });
     } catch (e) { toastError(e); }
   };
@@ -67,22 +78,24 @@ export default function Courses() {
       <Query q={courses}>
         {(list) => (
           <Table withTableBorder>
-            <Table.Thead><Table.Tr><Table.Th>Course</Table.Th><Table.Th>Type</Table.Th><Table.Th ta="right">Distance (nm)</Table.Th><Table.Th>Route</Table.Th></Table.Tr></Table.Thead>
+            <Table.Thead><Table.Tr><Table.Th>Course</Table.Th><Table.Th>Type</Table.Th><Table.Th ta="right">Distance (nm)</Table.Th><Table.Th>Route</Table.Th><Table.Th /></Table.Tr></Table.Thead>
             <Table.Tbody>
               {list.map((c) => (
                 <Table.Tr key={c.id}>
                   <Table.Td>{c.name}</Table.Td><Table.Td>{c.course_type}</Table.Td>
                   <Table.Td ta="right">{Number(c.distance_nm) > 0 ? Number(c.distance_nm).toFixed(2) : <Text span size="sm" c="dimmed">none yet</Text>}{c.distance_override !== null && <Text span size="xs" c="dimmed"> (entered)</Text>}</Table.Td>
                   <Table.Td>{c.description || c.mark_ids.map((id) => marks.data?.find((m) => m.id === id)?.name).join(" → ")}</Table.Td>
+                  <Table.Td><Button size="compact-xs" variant="default" onClick={() => startEdit(c)}>Edit</Button></Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>
           </Table>
         )}
       </Query>
-      <Card withBorder>
+      <Card withBorder ref={formRef}>
         <Stack gap="xs">
-          <Text fw={600}>New course</Text>
+          <Text fw={600}>{editing ? `Edit course: ${cn || "(no name)"}` : "New course"}</Text>
+          {editing && <Text size="sm" c="orange">Changing the marks or distance rescores races already sailed on this course (races with their own distance are not affected).</Text>}
           <Group align="flex-end">
             <TextInput label="Name" withAsterisk value={cn} onChange={(e) => setCn(e.currentTarget.value)} />
             <Select label="Course type" withAsterisk w={110} value={ct} onChange={setCt} data={(types.data ?? []).map((t) => ({ value: String(t.id), label: t.code }))} />
@@ -107,8 +120,12 @@ export default function Courses() {
             </Group>
             <Text size="xs" c="dimmed">A mark can be used as often as you like, for example to start and finish at the same mark.</Text>
           </Stack>
+          <TextInput label="Route description (optional)" description="Shown in the course list instead of the mark names" maxLength={300} value={desc} onChange={(e) => setDesc(e.currentTarget.value)} />
           <Text size="xs" c="dimmed">Distance is computed from the mark positions in the order above unless you enter one.</Text>
-          <Button onClick={addCourse} disabled={!cn.trim() || !ct || (ov !== "" && ov <= 0)} w={160}>Add course</Button>
+          <Group>
+            <Button onClick={saveCourse} disabled={!cn.trim() || !ct || (ov !== "" && ov <= 0)} w={160}>{editing ? "Save changes" : "Add course"}</Button>
+            {editing && <Button variant="default" onClick={resetForm}>Cancel</Button>}
+          </Group>
         </Stack>
       </Card>
     </Stack>

@@ -107,6 +107,22 @@ def refresh_pursuit(start: Start) -> None:
         f.save()
 
 
+def recalc_course_starts(course) -> int:
+    """After a course's marks or distance change, recalculate races already scored on it. Starts that carry their
+    own distance are unaffected. Returns how many races were recalculated."""
+    races = set()
+    for st in Start.objects.filter(course=course, distance_override__isnull=True).select_related(
+            "race__series", "rating_type", "course"):
+        for f in st.finishes.select_related("boat", "rating_type"):
+            f.start = st
+            recalc_finish(f)
+            f.save()
+        refresh_pursuit(st)
+        touch_race(st.race)
+        races.add(st.race_id)
+    return len(races)
+
+
 def refresh_pursuit_series(series: Series) -> None:
     for race in series.races.all():
         refresh_pursuit_race(race)

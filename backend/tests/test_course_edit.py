@@ -118,3 +118,35 @@ def test_delete_endpoints_need_race_committee_login(world):
     anon = Client()
     assert anon.delete(f"/api/manage/marks/{world['a'].id}").status_code == 401
     assert anon.delete(f"/api/manage/courses/{world['course'].id}").status_code == 401
+
+
+# ---- changing a boat's rating rescores its races -------------------------------------------------------
+def test_changing_a_rating_rescored_every_race_the_boat_finished(world):
+    c = editor_client()
+    Start.objects.filter(pk=world["start"].pk).update(distance_override=Decimal("10"))
+    boat = world["finish"].boat
+    # race 2 on a later date, same boat
+    race2 = Race.objects.create(series=world["race"].series, number=2, date=date(2026, 7, 1), status="sailed")
+    st2 = Start.objects.create(race=race2, fleet=world["start"].fleet, start_time=datetime(2026, 7, 1, 12, 0),
+                               rating_type=world["wl"], distance_override=Decimal("10"))
+    f2 = Finish.objects.create(start=st2, boat=boat, rating_type=world["wl"], rating_value=100,
+                               finish_time=datetime(2026, 7, 1, 14, 0))
+    # a manual rating on a third race must survive
+    race3 = Race.objects.create(series=world["race"].series, number=3, date=date(2026, 8, 1), status="sailed")
+    st3 = Start.objects.create(race=race3, fleet=world["start"].fleet, start_time=datetime(2026, 8, 1, 12, 0),
+                               rating_type=world["wl"], distance_override=Decimal("10"))
+    f3 = Finish.objects.create(start=st3, boat=boat, rating_type=world["wl"], rating_value=77,
+                               rating_source=Finish.Source.MANUAL, finish_time=datetime(2026, 8, 1, 14, 0))
+    r = post(c, f"/api/manage/boats/{boat.id}/ratings",
+             {"rating_type_id": world["wl"].id, "value": 110, "effective_from": "2026-01-01"})
+    assert r.status_code == 200
+    world["finish"].refresh_from_db(); f2.refresh_from_db(); f3.refresh_from_db()
+    # 7200 s elapsed - 110 s/nm x 10 nm = 6100 s
+    assert world["finish"].rating_value == 110 and world["finish"].corrected_seconds == 6100
+    assert f2.rating_value == 110 and f2.corrected_seconds == 6100
+    assert f3.rating_value == 77                      # a hand-entered rating is never overwritten
+    # deleting the rating leaves no rating to resolve: the finish loses its value rather than keeping a stale one
+    rid = BoatRating.objects.get(boat=boat, rating_type=world["wl"]).id
+    assert c.delete(f"/api/manage/ratings/{rid}", HTTP_X_CSRFTOKEN=c.csrf).status_code == 200
+    f2.refresh_from_db()
+    assert f2.rating_value is None

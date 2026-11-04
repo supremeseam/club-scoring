@@ -184,6 +184,26 @@ def reresolve_start(start: Start) -> list[dict]:
     return changes
 
 
+@transaction.atomic
+def rescore_boat(boat) -> int:
+    """After a boat's ratings (or fixed rating type) change, re-resolve its rating in every race it has finished.
+    Manually entered ratings are left alone. Returns how many races were recalculated."""
+    races, starts = set(), {}
+    for f in Finish.objects.filter(boat=boat).exclude(rating_source=Finish.Source.MANUAL).select_related(
+            "boat", "start__race__series", "start__course", "start__rating_type"):
+        old = (f.rating_type_id, f.rating_value, f.rating_source)
+        snapshot_rating(f)
+        recalc_finish(f)
+        f.save()
+        starts[f.start_id] = f.start
+        if old != (f.rating_type_id, f.rating_value, f.rating_source):
+            races.add(f.start.race_id)
+            touch_race(f.start.race)
+    for st in starts.values():
+        refresh_pursuit(st)             # a rating change moves pursuit start times for the whole start
+    return len(races)
+
+
 # ---- scoring ----------------------------------------------------------------
 def rules_for(series: Series) -> SeriesRules:
     return SeriesRules(discard_thresholds=tuple(series.discard_thresholds or ()),

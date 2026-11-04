@@ -168,7 +168,9 @@ def update_boat(request, pk: int, data: s.BoatIn):
     obj = get_object_or_404(Boat, pk=pk)
     for k, v in data.dict().items():
         setattr(obj, k, v)
-    return _boat_out(_save(obj))
+    out = _boat_out(_save(obj))
+    services.rescore_boat(obj)          # a changed fixed rating type changes which rating its races use
+    return out
 
 
 @router.post("/boats/{pk}/ratings", response=s.RatingOut)
@@ -181,12 +183,16 @@ def add_rating(request, pk: int, data: s.RatingIn):
         boat=boat, rating_type=rt, effective_from=data.effective_from,
         defaults={"value": D(data.value), "certificate": data.certificate,
                   "expires": data.expires, "notes": data.notes})
+    services.rescore_boat(boat)         # every race this boat has finished picks up the new rating
     return _rating_out(obj)
 
 
 @router.delete("/ratings/{pk}")
 def delete_rating(request, pk: int):
-    get_object_or_404(BoatRating, pk=pk).delete()
+    r = get_object_or_404(BoatRating, pk=pk)
+    boat = r.boat
+    r.delete()
+    services.rescore_boat(boat)
     return {"ok": True}
 
 

@@ -65,6 +65,8 @@ cannot change results, ratings or fees. If you sail yourself, link your own boat
 ## If something looks wrong
 - **Results did not update:** check the race status is *sailed* and each fleet has a start saved.
 - **A boat shows no points:** it probably has no rating for that rating type, or has not paid (if fees apply).
-- **Wrong rating used:** edit the boat's ratings from the race screen, then use **Update start** to re-apply them.
+- **Wrong rating used:** change or add the boat's rating (on the Boats page or the race screen). Every race that boat
+  has finished is rescored at once, using the rating in force on each race's date. A rating typed in by hand for one
+  race is never overwritten.
 - **Locked out after several wrong passwords:** wait 15 minutes, or ask an administrator to unlock you.
 - Anything else: ask the site administrator.

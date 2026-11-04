@@ -43,6 +43,17 @@ the browser's requests come from the website, not from this server's own name. T
 2. Set a **temporary** password (15+ characters; the same rules apply as for everyone). Make one with `python -c "import secrets;print(secrets.token_urlsafe(16))"` and send it privately.
 3. At their first login they are required to choose their own password before they can do anything else.
 
+## Clear demo or test data before a real season
+Back up first (see *Restore from backup*), then preview and run:
+```
+cd /opt/scoring
+sudo docker compose exec app python manage.py clear_season_data          # shows counts, changes nothing
+sudo docker compose exec app python manage.py clear_season_data --yes    # deletes
+```
+It removes all series, races, results, entries, payments, protests, their history and the crew board's postings and
+sign-ups. It keeps boats, ratings, fleets, courses and every login account. Remove demo logins afterwards in the
+site admin under Users.
+
 ## Skipper and crew logins
 The race committee approves skipper logins in the app (*Crew board*); see `docs/CREW.md`. Reset or disable one in the site admin like any account. After upgrading, run the migrations (`deploy.sh` does) so existing accounts keep the race-committee role.
 

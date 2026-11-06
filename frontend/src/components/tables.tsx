@@ -1,7 +1,7 @@
 import { Anchor, Badge, Table, Text } from "@mantine/core";
 import { Link } from "react-router-dom";
 import type { S } from "../api/client";
-import { fmtDate, fmtPoints } from "../lib/time";
+import { fmtDate, fmtPoints, timeOf } from "../lib/time";
 import { Place } from "./Brand";
 
 export function BoatLink({ boat }: { boat: S["PublicBoat"] }) {
@@ -20,7 +20,7 @@ const MARK: Record<string, string> = { fallback: "†", manual: "‡" };
 
 export function ResultsTable({ block, pursuit = false }: { block: S["FleetResults"]; pursuit?: boolean }) {
   return (
-    <Table.ScrollContainer minWidth={720}>
+    <Table.ScrollContainer minWidth={780}>
       <Table striped highlightOnHover className="brand-table">
         <Table.Thead>
           <Table.Tr>
@@ -30,6 +30,7 @@ export function ResultsTable({ block, pursuit = false }: { block: S["FleetResult
             <Table.Th>Skipper</Table.Th>
             <Table.Th>Club</Table.Th>
             <Table.Th ta="right">Rating ({block.rating_type})</Table.Th>
+            <Table.Th ta="right">Finish</Table.Th>
             <Table.Th ta="right">{pursuit ? "Own elapsed" : "Elapsed"}</Table.Th>
             <Table.Th ta="right">{pursuit ? "Since 1st gun" : "Corrected"}</Table.Th>
             <Table.Th ta="right">Pts</Table.Th>
@@ -48,6 +49,7 @@ export function ResultsTable({ block, pursuit = false }: { block: S["FleetResult
                 {r.rating_source ? MARK[r.rating_source] ?? "" : ""}
                 {r.rating !== null && r.rating_type !== block.rating_type ? <Text span size="xs" c="dimmed"> {r.rating_type}</Text> : null}
               </Table.Td>
+              <Table.Td ta="right">{r.finish_time ? timeOf(r.finish_time) : ""}</Table.Td>
               <Table.Td ta="right">{r.elapsed ?? ""}</Table.Td>
               <Table.Td ta="right">{r.corrected ?? ""}</Table.Td>
               <Table.Td ta="right">

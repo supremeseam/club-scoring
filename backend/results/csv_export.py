@@ -15,17 +15,22 @@ def fmt_pts(p) -> str:
     return str(int(p)) if p == int(p) else f"{p:.1f}"
 
 
+def fmt_clock(t) -> str:
+    """Time of day (HH:MM:SS) of a finish, or blank."""
+    return "" if t is None else t.strftime("%H:%M:%S")
+
+
 def race_csv(res: dict) -> str:
     out = io.StringIO()
     w = csv.writer(out)
     w.writerow(["fleet", "place", "boat", "sail_number", "skipper", "rating_type", "rating",
-                "elapsed", "corrected", "status", "points"])
+                "finish_time", "elapsed", "corrected", "status", "points"])
     for blk in res["fleets"]:
         for r in blk["rows"]:
             b = r["boat"]
             w.writerow([safe(blk["fleet_name"]), r["place"] or "", safe(b["name"]),
                         safe(b["sail_number"]), safe(b["skipper"]), r["rating_type"],
-                        "" if r["rating"] is None else r["rating"], r["elapsed"] or "",
+                        "" if r["rating"] is None else r["rating"], fmt_clock(r["finish_time"]), r["elapsed"] or "",
                         r["corrected"] or "", r["code"] or "", fmt_pts(r["points"])])
     return out.getvalue()
 

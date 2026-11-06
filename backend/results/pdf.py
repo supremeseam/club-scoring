@@ -13,7 +13,7 @@ from reportlab.platypus import Image, PageBreak, Paragraph, SimpleDocTemplate, S
 from racing.models import Race, Series
 from racing.services import race_results, series_standings
 
-from .csv_export import fmt_pts
+from .csv_export import fmt_clock, fmt_pts
 
 STYLES = getSampleStyleSheet()
 def _brand():
@@ -67,13 +67,13 @@ def _race_tables(res):
             head += f", {float(blk['distance_nm']):.2f} nm"
         story += [_p(head, "Heading3")]
         data = [["Pl", "Boat", "Sail #", "Skipper", f"Rating ({blk['rating_type']})",
-                 "Elapsed", "Corrected", "Pts"]]
+                 "Finish", "Elapsed", "Corrected", "Pts"]]
         mark = {"fallback": " †", "manual": " ‡"}
         for r in blk["rows"]:
             rating = "" if r["rating"] is None else f"{float(r['rating']):g}{mark.get(r['rating_source'], '')}"
             pts = fmt_pts(r["points"]) + (f" {r['code']}" if r["code"] else "")
             data.append([r["place"] or "", r["boat"]["name"], r["boat"]["sail_number"],
-                         r["boat"]["skipper"], rating, r["elapsed"] or "",
+                         r["boat"]["skipper"], rating, fmt_clock(r["finish_time"]), r["elapsed"] or "",
                          r["corrected"] or "", pts])
         story += [_table(data), Spacer(1, 4)]
         for r in blk["rows"]:

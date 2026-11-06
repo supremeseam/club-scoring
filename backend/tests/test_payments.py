@@ -191,3 +191,30 @@ def test_public_pdf_and_csv_omit_unpaid_boats():
     body = pub.get(f"/api/races/{races[0].id}/results.csv").content.decode().splitlines()
     names = [line.split(",")[2] for line in body[1:]]
     assert names == ["A"]
+
+
+def test_guests_are_hidden_from_public_series_standings_but_shown_in_the_race_results():
+    ser, boats, races = build(require_payment=False)
+    SeriesEntry.objects.filter(series=ser, boat=boats["C"]).update(in_series=False)       # C is a guest
+    private = services.series_standings(ser)["fleets"][0]["standings"]
+    public = services.series_standings(ser, public=True)["fleets"][0]["standings"]
+    assert any(r["guest"] and r["boat"]["name"] == "C" for r in private)                   # the committee still sees it
+    assert [r["boat"]["name"] for r in public if r["boat"]["name"] == "C"] == [] and not any(r["guest"] for r in public)
+    assert {r["boat"]["name"] for r in public} == {"A", "B", "M"}
+    # DNC / places of series boats are unchanged by hiding the guest
+    assert {r["boat"]["name"]: r["total"] for r in public} == {r["boat"]["name"]: r["total"] for r in private if not r["guest"]}
+    rows = services.race_results(races[0], public=True)["fleets"][0]["rows"]
+    c = next(r for r in rows if r["boat"]["name"] == "C")
+    assert c["points"] is not None                                                          # still scored in the race
+
+
+def test_race_csv_and_podium_pdf_include_finish_times():
+    from results.csv_export import race_csv
+    from results.pdf import podium_pdf
+    ser, boats, races = build(require_payment=False)
+    csv_text = race_csv(services.race_results(races[0], public=True))
+    lines = csv_text.splitlines()
+    assert "finish_time" in lines[0]
+    a = next(l for l in lines if ",A," in l)
+    assert "19:00:00" in a                                   # A finished 60 min after the 18:00 start
+    assert podium_pdf(races[0]).startswith(b"%PDF")

@@ -69,6 +69,7 @@ docs/RUNBOOK.md
 - RRS Appendix A Low Point: DNC/DNS/OCS/DNF/RET/DSQ/DNE/UFD/BFD, TLE (as DNF), SCP/ZFP percentage penalties, RDG (entered points or average), A8.1/A8.2 tie-breaks, discards (DNE never discarded).
 - Scoring basis per series: entries + 1, or "came to the start" + 1 (DNC is always entries + 1).
 - RC duty credit (RCD): off (scores DNC), average of all other races, or average of races before; capped per boat; credits are discarded only after sailed races.
+- Guests (boats not marked *in series*) are scored in each race's own results but are left out of the public series standings, CSV and PDF. The race committee still sees them, italic, in the manage view; they never change a series boat's score.
 - Abandoned/cancelled races don't count toward discard thresholds.
 
 ## Security notes

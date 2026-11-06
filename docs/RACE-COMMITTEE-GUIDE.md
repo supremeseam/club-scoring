@@ -26,7 +26,8 @@ Forgot your password? Ask a site administrator to reset it. You will pick a new 
 2. For each fleet, set the **course** (or type in a distance), the **rating type**, and the **start time**, then
    click **Set start**. Anything marked with a red asterisk must be filled in before it will save.
 3. Set the race status to **sailed** once the first start goes, so results appear on the public site.
-4. Boats not on the list (guests, late entries)? Use **Add a boat for this race**.
+4. Boats not on the list (guests, late entries)? Use **Add a boat for this race**. A guest is scored in that race's
+   results but is not in the public series standings (you still see it, in italics, in the committee view).
 
 ### Pursuit race
 The race screen shows a blue **Pursuit start times** list: the slowest boat starts at the first gun and each other

@@ -287,8 +287,9 @@ def _standings_block(label, fleet_id, entries, races, finishes_by_race_boat, rul
     }
 
 
-def series_standings(series: Series, public: bool = False) -> dict:
-    """Standings per fleet. With public=True and payment required, boats that have not paid are left out."""
+def series_standings(series: Series, public: bool = False, keep_guests: bool = False) -> dict:
+    """Standings per fleet. With public=True, guests are left out (keep_guests=True is for building a race's own
+    results, where guests still show), and with payment required, boats that have not paid are left out."""
     entries, races = _fleet_data(series)
     rules = rules_for(series)
     finishes_by_race: dict[int, list[Finish]] = {}
@@ -303,6 +304,8 @@ def series_standings(series: Series, public: bool = False) -> dict:
     if public and series.require_payment:
         free = any(r.members_free for r in races)
         entries = [e for e in entries if e.boat_id in anyone or (e.boat.is_member and free)]
+    if public and not keep_guests:
+        entries = [e for e in entries if e.in_series]       # guests are not on the public series standings
     boat_by_id = {e.boat_id: e.boat for e in entries}
     free_races = any(r.members_free for r in races)
     for e in entries:   # in-memory: who is scored at all (with payments required, only boats that paid)
@@ -348,7 +351,7 @@ def series_standings(series: Series, public: bool = False) -> dict:
 def race_results(race: Race, public: bool = False) -> dict:
     """Per-fleet results for one race, with points as scored in the series."""
     series = race.series
-    standings = series_standings(series, public)
+    standings = series_standings(series, public, keep_guests=True)
     pts = {}
     for blk in standings["fleets"]:
         for row in blk["standings"]:

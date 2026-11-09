@@ -56,7 +56,7 @@ export default function RacePage() {
             </Stack>
           ))}
           <Text size="xs" c="dimmed">
-            {"†"} fallback rating used {"‡"} rating entered manually by race committee.
+            {"†"} fallback rating used (another rating type, or the boat's first rating dated after this race) {"‡"} rating entered manually by race committee.
             {r.final ? "" : " Results are provisional and subject to protest."}
           </Text>
         </Stack>

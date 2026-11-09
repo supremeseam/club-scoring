@@ -35,6 +35,8 @@ boat starts at the time shown. Check it just before the first gun, because addin
 times. The first boat across the finish line wins.
 
 ### Recording finishes
+- When you press **Save finishes**, the app first shows the course, distance, start time and rating type and asks you
+  to confirm them, so a wrong course or start time is caught before the results are scored.
 - Type the finish time for each boat (hours:minutes:seconds), or press **Now** as the boat crosses the line.
 - If a boat did not finish, pick a code instead: **DNS** (did not start), **DNF** (did not finish), **OCS**
   (over the line early), **DSQ**, **RET** and so on.

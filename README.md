@@ -65,7 +65,7 @@ docs/RUNBOOK.md
 
 ## Scoring rules implemented
 - Corrected time = elapsed − rating × distance (rating in s/nm; can be negative), rounded to the second. Ties split points.
-- Ratings are dated rows per rating type (WL, RL, add more in *Fleets & rating types*). Each finish records the rating it used (`exact`, `fallback`, `manual`). Adding, changing or deleting a boat's rating (or its fixed rating type) re-resolves that boat's finishes in **every** race and rescores them, each using the rating in force on that race's date, so a re-rate with an earlier effective date also changes races already sailed. Hand-entered (`manual`) ratings are never overwritten.
+- Ratings are dated rows per rating type (WL, RL, add more in *Fleets & rating types*). Each finish records the rating it used (`exact`, `fallback`, `manual`). Adding, changing or deleting a boat's rating (or its fixed rating type) re-resolves that boat's finishes in **every** race and rescores them, each using the rating in force on that race's date, so a re-rate with an earlier effective date also changes races already sailed. Hand-entered (`manual`) ratings are never overwritten. If every rating a boat has of a type is dated *after* the race, its earliest one is used and marked `fallback` (†), since nothing newer was in force.
 - RRS Appendix A Low Point: DNC/DNS/OCS/DNF/RET/DSQ/DNE/UFD/BFD, TLE (as DNF), SCP/ZFP percentage penalties, RDG (entered points or average), A8.1/A8.2 tie-breaks, discards (DNE never discarded).
 - Scoring basis per series: entries + 1, or "came to the start" + 1 (DNC is always entries + 1).
 - RC duty credit (RCD): off (scores DNC), average of all other races, or average of races before; capped per boat; credits are discarded only after sailed races.

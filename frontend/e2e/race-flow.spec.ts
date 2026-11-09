@@ -46,6 +46,7 @@ test("editor sets up a series and race, enters finishes on a phone, public stand
     await page.getByLabel(`Finish time ${b.name}`).fill(times[i]);
   }
   await page.getByRole("button", { name: /Save .* finishes/ }).click();
+  await page.getByRole("button", { name: "Confirm and save" }).click();
   await expect(page.getByText("Finishes saved")).toBeVisible();
 
   // --- public standings reflect the result

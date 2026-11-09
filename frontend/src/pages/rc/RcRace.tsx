@@ -1,5 +1,5 @@
 import {
-  Alert, Badge, Button, Card, Checkbox, Group, NumberInput, Select, SimpleGrid, Stack, Table, Text, TextInput, Title,
+  Alert, Badge, Button, Card, Checkbox, Group, Modal, NumberInput, Select, SimpleGrid, Stack, Table, Text, TextInput, Title,
 } from "@mantine/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
@@ -192,7 +192,7 @@ function FleetPanel({ race, fleet, courses, types, start, boats, allBoats, enter
         <AddBoat fleet={fleet} raceSeriesId={race.series_id} allBoats={allBoats} entered={entered} single={single} />
         {start && race.is_pursuit && <PursuitSchedule startId={start.id} />}
         {start && <RatingPreview startId={start.id} rtypeId={start.rating_type_id} types={types} allBoats={allBoats} raceDate={race.date} />}
-        {start && <Finishes start={start} boats={boats} fleetName={fleet.name} race={race} series={series} payments={payments} seriesFleets={seriesFleets} />}
+        {start && <Finishes start={start} boats={boats} fleetName={fleet.name} race={race} courses={courses} types={types} series={series} payments={payments} seriesFleets={seriesFleets} />}
       </Stack>
     </Card>
   );
@@ -311,8 +311,9 @@ function RatingPreview({ startId, rtypeId, types, allBoats, raceDate }: {
   );
 }
 
-function Finishes({ start, boats, fleetName, race, series, payments, seriesFleets }: {
+function Finishes({ start, boats, fleetName, race, courses, types, series, payments, seriesFleets }: {
   start: S["StartOut"]; boats: S["BoatOut"][]; fleetName: string; race: S["RaceEditor"];
+  courses: S["CourseOut"][]; types: S["RatingTypeIO"][];
   series: S["SeriesEditor"]; payments: S["PaymentOut"][]; seriesFleets: S["FleetIO"][];
 }) {
   const qc = useQueryClient();
@@ -320,6 +321,7 @@ function Finishes({ start, boats, fleetName, race, series, payments, seriesFleet
   const preview = useGet<S["RatingPreviewRow"][]>(`/manage/starts/${start.id}/rating-preview`);
   const [rows, setRows] = useState<Record<number, Row>>({});
   const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const startIso = start.start_time;
   const startDate = dateOf(startIso);
 
@@ -367,6 +369,7 @@ function Finishes({ start, boats, fleetName, race, series, payments, seriesFleet
   });
 
   const save = async () => {
+    setConfirming(false);
     setBusy(true);
     try {
       const items = boats.flatMap((b) => {
@@ -468,10 +471,29 @@ function Finishes({ start, boats, fleetName, race, series, payments, seriesFleet
       <datalist id="penalty-rules">{RULE_SUGGESTIONS.map((x) => <option key={x} value={x} />)}</datalist>
       {problems.length > 0 && <Alert color="orange">{problems.join(" · ")}</Alert>}
       <div style={{ position: "sticky", bottom: 8 }}>
-        <Button fullWidth size="md" onClick={save} loading={busy} disabled={problems.length > 0}>
+        <Button fullWidth size="md" onClick={() => setConfirming(true)} loading={busy} disabled={problems.length > 0}>
           Save {fleetName} finishes
         </Button>
       </div>
+      {confirming && (
+        <Modal opened onClose={() => setConfirming(false)} title={`Check the race details: ${fleetName}`} centered>
+          <Stack gap="sm">
+            <Text size="sm" c="dimmed">Finishes are scored from these. Make sure they are right before saving.</Text>
+            <Table withTableBorder>
+              <Table.Tbody>
+                <Table.Tr><Table.Th>Course</Table.Th><Table.Td>{courses.find((c) => c.id === start.course_id)?.name ?? "No course (distance entered by hand)"}</Table.Td></Table.Tr>
+                <Table.Tr><Table.Th>Distance</Table.Th><Table.Td>{start.distance_nm === null || start.distance_nm === undefined ? "none" : `${Number(start.distance_nm).toFixed(2)} nm`}</Table.Td></Table.Tr>
+                <Table.Tr><Table.Th>Start</Table.Th><Table.Td>{startDate} {timeOf(startIso)}</Table.Td></Table.Tr>
+                <Table.Tr><Table.Th>Rating type</Table.Th><Table.Td>{types.find((t) => t.id === start.rating_type_id)?.code ?? "?"}</Table.Td></Table.Tr>
+              </Table.Tbody>
+            </Table>
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setConfirming(false)}>Go back</Button>
+              <Button onClick={save}>Confirm and save</Button>
+            </Group>
+          </Stack>
+        </Modal>
+      )}
     </Stack>
   );
 }

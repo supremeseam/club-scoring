@@ -137,8 +137,10 @@ def test_rating_resolution(seeded):
     gannet = Boat.objects.get(name="Gannet")
     assert resolve_rating(gannet, wl, date(2026, 6, 10))[0] == 54
     assert resolve_rating(gannet, wl, date(2026, 6, 17))[0] == 48
-    # no rating at all before any effective date -> None
-    assert resolve_rating(zephyr, wl, date(2025, 1, 1)) is None
+    # before every dated rating the boat has, its earliest one applies (marked as a fallback)...
+    assert resolve_rating(zephyr, wl, date(2025, 1, 1)) == (Decimal("84.0"), "fallback")
+    # ...but a boat with no rating of that type at all still has none
+    assert resolve_rating(Boat.objects.create(name="Unrated", sail_number="0"), wl, date(2026, 7, 1)) is None
 
 
 def test_old_results_keep_snapshot_after_rerate(seeded):

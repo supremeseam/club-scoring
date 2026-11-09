@@ -19,7 +19,9 @@ def resolve_rating(boat: Boat, rating_type: RatingType, on_date: date
 
     1. Latest rating of that type effective on or before the date  -> "exact"
     2. The type's fallback (type X, plus an offset)                 -> "fallback"
-    3. None: the RC must enter a manual rating.
+    3. The boat's earliest rating of that type, when every rating it has is dated after the race (a boat's first
+       rating is its rating until a re-rate says otherwise)                 -> "fallback"
+    4. None: the RC must enter a manual rating.
     """
     exact = _latest(boat, rating_type, on_date)
     if exact:
@@ -34,6 +36,9 @@ def resolve_rating(boat: Boat, rating_type: RatingType, on_date: date
         hit = _latest(boat, current, on_date)
         if hit:
             return hit.value + offset, "fallback"
+    first = (BoatRating.objects.filter(boat=boat, rating_type=rating_type).order_by("effective_from").first())
+    if first:
+        return first.value, "fallback"
     return None
 
 

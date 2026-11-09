@@ -150,3 +150,17 @@ def test_changing_a_rating_rescored_every_race_the_boat_finished(world):
     assert c.delete(f"/api/manage/ratings/{rid}", HTTP_X_CSRFTOKEN=c.csrf).status_code == 200
     f2.refresh_from_db()
     assert f2.rating_value is None
+
+
+def test_a_boats_first_rating_covers_races_before_its_date(world):
+    from racing.ratings import resolve_rating
+    wl = world["wl"]
+    boat = Boat.objects.create(name="Late", sail_number="9")
+    BoatRating.objects.create(boat=boat, rating_type=wl, value=150, effective_from=date(2026, 11, 7))
+    BoatRating.objects.create(boat=boat, rating_type=wl, value=140, effective_from=date(2027, 3, 1))
+    # before every dated rating: its earliest one, marked as a fallback
+    assert resolve_rating(boat, wl, date(2026, 10, 3)) == (Decimal("150"), "fallback")
+    # once a rating is in force, the normal dated rule applies
+    assert resolve_rating(boat, wl, date(2026, 12, 1)) == (Decimal("150"), "exact")
+    assert resolve_rating(boat, wl, date(2027, 4, 1)) == (Decimal("140"), "exact")
+    assert resolve_rating(Boat.objects.create(name="None", sail_number="8"), wl, date(2026, 10, 3)) is None
